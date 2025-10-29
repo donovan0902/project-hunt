@@ -9,6 +9,7 @@ export default defineSchema({
     lead: v.string(),
     leadInitials: v.string(),
     upvotes: v.number(),
+    entryId: v.optional(v.string()),
   }),
 });
 

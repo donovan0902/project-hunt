@@ -9,6 +9,7 @@
  */
 
 import type * as projects from "../projects.js";
+import type * as rag from "../rag.js";
 
 import type {
   ApiFromModules,
@@ -26,6 +27,7 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   projects: typeof projects;
+  rag: typeof rag;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
 
