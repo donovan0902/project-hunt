@@ -1,6 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 type Project = {
-  id: string;
+  _id: Id<"projects">;
   name: string;
   summary: string;
   team: string;
@@ -16,45 +20,6 @@ type Project = {
   leadInitials: string;
   upvotes: number;
 };
-
-const PROJECTS: Project[] = [
-  {
-    id: "atlas",
-    name: "Atlas Deploy Hub",
-    summary: "Release orchestration so every org can cut a build without core ops handoffs.",
-    team: "Platform Ops",
-    lead: "Maya Patel",
-    leadInitials: "MP",
-    upvotes: 42,
-  },
-  {
-    id: "pulse",
-    name: "Pulse AI Coach",
-    summary: "Slack assistant surfacing customer blockers straight to the squad channels.",
-    team: "Intelligence Guild",
-    lead: "Evan Lee",
-    leadInitials: "EL",
-    upvotes: 35,
-  },
-  {
-    id: "northstar",
-    name: "Northstar Live Boards",
-    summary: "Always-on view of OKRs with telemetry so reviews stop depending on slide decks.",
-    team: "Insights Studio",
-    lead: "Riley Chen",
-    leadInitials: "RC",
-    upvotes: 21,
-  },
-  {
-    id: "handoff",
-    name: "Voyager Handoff Kit",
-    summary: "Playbooks plus scorecards that make remote project transitions painless.",
-    team: "Workplace Lab",
-    lead: "June Park",
-    leadInitials: "JP",
-    upvotes: 12,
-  },
-];
 
 const FORUMS = [
   {
@@ -79,18 +44,16 @@ const FORUMS = [
 
 
 export default function Home() {
+  const router = useRouter();
   const [query, setQuery] = useState("");
-  const [votes, setVotes] = useState<Record<string, number>>(() => {
-    return PROJECTS.reduce((acc, project) => {
-      acc[project.id] = project.upvotes;
-      return acc;
-    }, {} as Record<string, number>);
-  });
+  const projects = useQuery(api.projects.list);
+  const upvoteProject = useMutation(api.projects.upvote);
 
   const filteredProjects = useMemo(() => {
+    if (!projects) return [];
     const q = query.trim().toLowerCase();
-    if (!q) return PROJECTS;
-    return PROJECTS.filter((project) => {
+    if (!q) return projects;
+    return projects.filter((project) => {
       return (
         project.name.toLowerCase().includes(q) ||
         project.summary.toLowerCase().includes(q) ||
@@ -98,31 +61,35 @@ export default function Home() {
         project.lead.toLowerCase().includes(q)
       );
     });
-  }, [query]);
+  }, [query, projects]);
 
-  const handleUpvote = (projectId: string) => {
-    setVotes((prev) => ({
-      ...prev,
-      [projectId]: (prev[projectId] ?? 0) + 1,
-    }));
+  const handleUpvote = async (projectId: Id<"projects">) => {
+    try {
+      await upvoteProject({ projectId });
+    } catch (error) {
+      console.error("Failed to upvote:", error);
+    }
   };
 
   return (
     <div className="min-h-screen bg-zinc-50">
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 pb-16 pt-10">
-        <Header query={query} setQuery={setQuery} />
+        <Header query={query} setQuery={setQuery} router={router} />
         <section className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="space-y-6">
             <div>
               <h2 className="text-3xl font-semibold tracking-tight">Who is working on what</h2>
             </div>
             <div className="space-y-0">
-              {filteredProjects.length ? (
+              {!projects ? (
+                <div className="py-8 text-center text-sm text-zinc-500">
+                  Loading projects...
+                </div>
+              ) : filteredProjects.length ? (
                 filteredProjects.map((project) => (
                   <ProjectRow
-                    key={project.id}
+                    key={project._id}
                     project={project}
-                    votes={votes[project.id] ?? project.upvotes}
                     onUpvote={handleUpvote}
                   />
                 ))
@@ -142,15 +109,17 @@ export default function Home() {
 function Header({
   query,
   setQuery,
+  router,
 }: {
   query: string;
   setQuery: (value: string) => void;
+  router: ReturnType<typeof useRouter>;
 }) {
   return (
     <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div className="flex items-center gap-3">
         <div>
-          <p className="text-xl font-semibold text-zinc-900">Project Hunt</p>
+          <p className="text-xl font-semibold text-zinc-900">Garden</p>
         </div>
       </div>
       <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row md:items-center">
@@ -161,7 +130,11 @@ function Header({
           className="md:w-72"
         />
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="whitespace-nowrap">
+          <Button
+            variant="outline"
+            className="whitespace-nowrap"
+            onClick={() => router.push("/submit")}
+          >
             Share Project
           </Button>
           <Avatar className="h-10 w-10 border border-zinc-900/10 bg-zinc-900 text-white">
@@ -177,12 +150,10 @@ function Header({
 
 function ProjectRow({
   project,
-  votes,
   onUpvote,
 }: {
   project: Project;
-  votes: number;
-  onUpvote: (projectId: string) => void;
+  onUpvote: (projectId: Id<"projects">) => void;
 }) {
   return (
     <div className="flex flex-col gap-4 border-b border-zinc-200/80 pb-6 pt-6 first:pt-0 last:border-b-0 last:pb-0">
@@ -193,10 +164,10 @@ function ProjectRow({
         </div>
         <Button
           variant="outline"
-          onClick={() => onUpvote(project.id)}
+          onClick={() => onUpvote(project._id)}
           className="rounded-full border-zinc-200 px-4 py-2 text-sm font-semibold"
         >
-          ↑ {votes}
+          ↑ {project.upvotes}
         </Button>
       </div>
       <div className="flex flex-wrap items-center gap-4 text-sm text-zinc-500">
@@ -221,7 +192,6 @@ function EmptyState() {
   return (
     <div className="rounded-3xl bg-zinc-100/60 p-6 text-center text-sm text-zinc-500">
       <p className="font-medium text-zinc-900">No projects match your search.</p>
-      <p>Share a quick update so leadership sees it here.</p>
     </div>
   );
 }
