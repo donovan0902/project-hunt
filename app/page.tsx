@@ -155,8 +155,22 @@ function ProjectRow({
   project: Project;
   onUpvote: (projectId: Id<"projects">) => void;
 }) {
+  const router = useRouter();
+
+  const handleProjectClick = () => {
+    router.push(`/project/${project._id}`);
+  };
+
+  const handleUpvoteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onUpvote(project._id);
+  };
+
   return (
-    <div className="flex flex-col gap-4 border-b border-zinc-200/80 pb-6 pt-6 first:pt-0 last:border-b-0 last:pb-0">
+    <div 
+      className="flex flex-col gap-4 border-b border-zinc-200/80 pb-6 pt-6 first:pt-0 last:border-b-0 last:pb-0 cursor-pointer hover:bg-zinc-100 rounded-lg transition-colors px-4 -mx-4"
+      onClick={handleProjectClick}
+    >
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h3 className="text-xl font-semibold text-zinc-900">{project.name}</h3>
@@ -164,7 +178,7 @@ function ProjectRow({
         </div>
         <Button
           variant="outline"
-          onClick={() => onUpvote(project._id)}
+          onClick={handleUpvoteClick}
           className="rounded-full border-zinc-200 px-4 py-2 text-sm font-semibold"
         >
           ↑ {project.upvotes}
