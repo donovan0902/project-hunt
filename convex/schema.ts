@@ -10,6 +10,7 @@ export default defineSchema({
     leadInitials: v.string(),
     upvotes: v.number(),
     entryId: v.optional(v.string()),
+    status: v.union(v.literal("pending"), v.literal("active")),
   }),
 });
 

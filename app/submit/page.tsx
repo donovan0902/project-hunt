@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export default function SubmitProject() {
   const router = useRouter();
-  const createProject = useMutation(api.projects.create);
+  const createProject = useAction(api.projects.create);
+  const confirmProject = useMutation(api.projects.confirmProject);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -25,14 +26,21 @@ export default function SubmitProject() {
     setIsSubmitting(true);
     
     try {
-      await createProject({
+      const result = await createProject({
         name: formData.name,
         summary: formData.description,
         team: formData.team,
         lead: formData.lead,
       });
       
-      router.push("/");
+      // If no similar projects found, auto-confirm and go home
+      if (result.similarProjects.length === 0) {
+        await confirmProject({ projectId: result.projectId });
+        router.push("/");
+      } else {
+        // Redirect to confirmation page to show similar projects
+        router.push(`/submit/confirm?projectId=${result.projectId}`);
+      }
     } catch (error) {
       console.error("Failed to create project:", error);
       alert("Failed to submit project. Please try again.");
