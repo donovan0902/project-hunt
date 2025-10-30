@@ -31,14 +31,14 @@ type Project = {
 
 const FORUMS = [
   {
-    title: "AI epic fails",
-    summary: "Share cautionary tales so we stop repeating the same experiments.",
+    title: "AI fails",
+    summary: "Dumb things AI does",
     threads: 7,
     lastPost: "9:20 AM",
   },
   {
     title: "AI tips & tricks",
-    summary: "Quick wins from crews that already automated the boring work.",
+    summary: "Want to 10x your productivity? Learn how here",
     threads: 12,
     lastPost: "Yesterday",
   },
@@ -139,7 +139,7 @@ function ProjectRow({
 
   return (
     <div
-      className="grid gap-4 border-b border-zinc-200/80 pb-6 pt-6 last:border-b-0 cursor-pointer hover:bg-zinc-100 rounded-lg transition-colors px-4 -mx-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+      className="grid gap-4 pb-6 pt-6 cursor-pointer hover:bg-zinc-100 rounded-lg transition-colors px-4 -mx-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
       onClick={handleProjectClick}
     >
       <div className="min-w-0 space-y-4">

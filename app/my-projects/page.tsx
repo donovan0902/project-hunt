@@ -33,9 +33,6 @@ export default function MyProjectsPage() {
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">My Projects</h1>
           </div>
-          <Button onClick={() => router.push("/submit")}>
-            Submit New Project
-          </Button>
         </div>
 
         {!projects ? (
