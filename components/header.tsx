@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
@@ -34,28 +35,32 @@ export function Header() {
 
         {/* Right: Auth Buttons */}
         <div className="flex items-center gap-3">
-          {/* Sign In Button - will be conditionally shown based on auth state */}
-          <SignInButton mode="modal">
-            <Button variant="ghost" size="sm">
-              Sign In
-            </Button>
-          </SignInButton>
+          <Unauthenticated>
+            <SignInButton mode="modal">
+              <Button variant="ghost" size="sm">
+                Sign In
+              </Button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <Button size="sm">
+                Sign Up
+              </Button>
+            </SignUpButton>
+          </Unauthenticated>
 
-          {/* Sign Up Button - will be conditionally shown based on auth state */}
-          <SignUpButton mode="modal">
-            <Button size="sm">
-              Sign Up
-            </Button>
-          </SignUpButton>
+          <Authenticated>
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: "h-9 w-9",
+                },
+              }}
+            />
+          </Authenticated>
 
-          {/* User Button - will be conditionally shown based on auth state */}
-          <UserButton
-            appearance={{
-              elements: {
-                avatarBox: "h-9 w-9",
-              },
-            }}
-          />
+          <AuthLoading>
+            <div className="h-9 w-9 animate-pulse rounded-full bg-zinc-200" />
+          </AuthLoading>
         </div>
       </div>
 
