@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as comments from "../comments.js";
 import type * as projects from "../projects.js";
 import type * as rag from "../rag.js";
 
@@ -26,6 +27,7 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  comments: typeof comments;
   projects: typeof projects;
   rag: typeof rag;
 }>;

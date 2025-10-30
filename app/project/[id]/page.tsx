@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { SignInButton, useUser } from "@clerk/nextjs";
+import { CommentForm } from "@/components/CommentForm";
+import { CommentThread } from "@/components/CommentThread";
 
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -17,9 +19,14 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const { user } = useUser();
   const projectId = id as Id<"projects">;
   const project = useQuery(api.projects.getById, { projectId });
+  const comments = useQuery(api.comments.getComments, { projectId });
   const toggleUpvote = useMutation(api.projects.toggleUpvote);
 
   const isOwner = user && project && project.userId === user.id;
+
+  // Get top-level comments (no parent)
+  const topLevelComments =
+    comments?.filter((c) => !c.parentCommentId && !c.isDeleted) || [];
 
   const handleUpvote = async () => {
     try {
@@ -130,6 +137,37 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           <div>
             <h2 className="mb-3 text-xl font-semibold text-zinc-900">About this project</h2>
             <p className="text-base leading-relaxed text-zinc-600">{project.summary}</p>
+          </div>
+
+          <Separator />
+
+          <div>
+            <h2 className="mb-6 text-xl font-semibold text-zinc-900">Discussion</h2>
+            <div className="space-y-4">
+              <CommentForm projectId={projectId} />
+              {comments === undefined ? (
+                <div className="py-8 text-center text-sm text-zinc-500">
+                  Loading comments...
+                </div>
+              ) : topLevelComments.length === 0 ? (
+                <div className="rounded-lg border border-zinc-200 bg-zinc-50 py-12 text-center">
+                  <p className="text-sm text-zinc-500">
+                    No comments yet. Be the first to start the discussion!
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {topLevelComments.map((comment) => (
+                    <CommentThread
+                      key={comment._id}
+                      comment={comment}
+                      allComments={comments}
+                      projectId={projectId}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </main>
