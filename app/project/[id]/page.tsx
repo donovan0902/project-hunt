@@ -68,28 +68,18 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   return (
     <div className="min-h-screen bg-zinc-50">
       <main className="mx-auto max-w-4xl px-6 py-10">
-        <div className="mb-8 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              onClick={() => router.push("/")}
-            >
-              ← Back
-            </Button>
-            {isOwner && (
-              <Button
-                variant="outline"
-                onClick={() => router.push(`/project/${id}/edit`)}
-              >
-                Edit
-              </Button>
-            )}
-          </div>
-        </div>
-
         <div className="space-y-8">
           <div className="flex items-start justify-between gap-6">
-            <div className="flex-1">
+            <div className="relative flex-1">
+              {isOwner && (
+                <Button
+                  variant="outline"
+                  onClick={() => router.push(`/project/${id}/edit`)}
+                  className="absolute -left-20 top-0"
+                >
+                  Edit
+                </Button>
+              )}
               <h1 className="text-4xl font-bold text-zinc-900">{project.name}</h1>
               {project.headline && (
                 <p className="mt-2 text-lg text-zinc-600">{project.headline}</p>
@@ -134,14 +124,10 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           <Separator />
 
           <div>
-            <h2 className="mb-3 text-xl font-semibold text-zinc-900">About this project</h2>
             <p className="text-base leading-relaxed text-zinc-600">{project.summary}</p>
           </div>
 
-          <Separator />
-
           <div id="discussion">
-            <h2 className="mb-6 text-xl font-semibold text-zinc-900">Discussion</h2>
             <div className="space-y-4">
               <CommentForm projectId={projectId} />
               {comments === undefined ? (

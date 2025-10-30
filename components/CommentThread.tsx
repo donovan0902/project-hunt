@@ -102,7 +102,7 @@ export function CommentThread({
 
   return (
     <div>
-      <div className="rounded-lg border border-zinc-200 bg-white p-4">
+      <div className="py-3">
         <div className="flex items-start gap-3">
           <Avatar className="h-8 w-8 bg-zinc-100">
             <AvatarImage src={comment.userAvatar} alt={comment.userName || "User"} />
@@ -186,7 +186,7 @@ export function CommentThread({
 
       {/* Nested replies */}
       {replies.length > 0 && (
-        <div className="ml-11 mt-3 space-y-3 border-l-2 border-zinc-100 pl-4">
+        <div className="ml-11 mt-3 space-y-3 border-l-2 border-zinc-300 pl-4">
           {replies.map((reply) => (
             <CommentThread
               key={reply._id}
