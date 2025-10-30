@@ -141,7 +141,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
           <Separator />
 
-          <div>
+          <div id="discussion">
             <h2 className="mb-6 text-xl font-semibold text-zinc-900">Discussion</h2>
             <div className="space-y-4">
               <CommentForm projectId={projectId} />
@@ -174,4 +174,3 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     </div>
   );
 }
-

@@ -327,11 +327,17 @@ export const list = query({
     const userId = identity?.subject;
 
     // Get upvote counts and user upvote status for each project
-    const projectsWithUpvotes = await Promise.all(
+    const projectsWithCounts = await Promise.all(
       projects.map(async (project) => {
         const upvotes = await ctx.db
           .query("upvotes")
           .withIndex("by_project", (q) => q.eq("projectId", project._id))
+          .collect();
+
+        const comments = await ctx.db
+          .query("comments")
+          .withIndex("by_project", (q) => q.eq("projectId", project._id))
+          .filter((q) => q.neq(q.field("isDeleted"), true))
           .collect();
 
         // Check if current user has upvoted this project
@@ -344,13 +350,14 @@ export const list = query({
         return {
           ...project,
           upvotes: upvotes.length,
+          commentCount: comments.length,
           hasUpvoted,
         };
       })
     );
 
     // Sort by upvotes descending
-    return projectsWithUpvotes.sort((a, b) => b.upvotes - a.upvotes);
+    return projectsWithCounts.sort((a, b) => b.upvotes - a.upvotes);
   },
 });
 
@@ -549,4 +556,3 @@ export const getUpvoteCount = query({
     return upvotes.length;
   },
 });
-

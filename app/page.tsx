@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { SignInButton } from "@clerk/nextjs";
+import { MessageCircle } from "lucide-react";
 
 
 type Project = {
@@ -22,6 +23,7 @@ type Project = {
   lead: string;
   leadInitials: string;
   upvotes: number;
+  commentCount: number;
   hasUpvoted: boolean;
 };
 
@@ -76,8 +78,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 pb-16 pt-10">
-        <section className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 pb-16 pt-10">
+        <section className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_280px]">
           <div className="space-y-6">
             <div>
               <h2 className="text-3xl font-semibold tracking-tight">Who is working on what</h2>
@@ -127,49 +129,67 @@ function ProjectRow({
     onUpvote(project._id);
   };
 
+  const handleCommentClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    router.push(`/project/${project._id}#discussion`);
+  };
+
   return (
     <div
-      className="flex flex-col gap-4 border-b border-zinc-200/80 pb-6 pt-6 first:pt-0 last:border-b-0 last:pb-0 cursor-pointer hover:bg-zinc-100 rounded-lg transition-colors px-4 -mx-4"
+      className="grid gap-4 border-b border-zinc-200/80 pb-6 pt-6 last:border-b-0 cursor-pointer hover:bg-zinc-100 rounded-lg transition-colors px-4 -mx-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
       onClick={handleProjectClick}
     >
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
+      <div className="min-w-0 space-y-4">
+        <div className="min-w-0">
           <h3 className="text-xl font-semibold text-zinc-900">{project.name}</h3>
-          <p className="mt-1 text-sm text-zinc-500">{project.summary}</p>
+          <p className="mt-1 text-sm text-zinc-500 break-words">{project.summary}</p>
         </div>
-        {isAuthenticated ? (
-          <Button
-            variant={project.hasUpvoted ? "default" : "outline"}
-            onClick={handleUpvoteClick}
-            className="rounded-full px-4 py-2 text-sm font-semibold"
-          >
-            ↑ {project.upvotes}
-          </Button>
-        ) : (
-          <SignInButton mode="modal">
+        <div className="flex flex-wrap items-center gap-4 text-sm text-zinc-500">
+          <span className="flex items-center gap-2">
+            <Avatar className="h-9 w-9 bg-zinc-100 text-sm font-semibold text-zinc-600">
+              <AvatarFallback>{project.leadInitials}</AvatarFallback>
+            </Avatar>
+            <span>
+              Lead <span className="font-medium text-zinc-900">{project.lead}</span>
+            </span>
+          </span>
+          <Separator orientation="vertical" className="hidden h-6 lg:block" />
+          <span>
+            Team <span className="font-medium text-zinc-900">{project.team}</span>
+          </span>
+        </div>
+      </div>
+      <div className="flex items-center justify-end gap-2">
+        <Button
+          variant="outline"
+          onClick={handleCommentClick}
+          className="flex items-center gap-1 rounded-full border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-600 hover:text-zinc-900"
+          aria-label={`View ${project.commentCount} comments`}
+        >
+          <MessageCircle className="h-4 w-4" aria-hidden="true" />
+          <span>{project.commentCount}</span>
+        </Button>
+        <div>
+          {isAuthenticated ? (
             <Button
-              variant="outline"
-              onClick={(e) => e.stopPropagation()}
-              className="rounded-full border-zinc-200 px-4 py-2 text-sm font-semibold"
+              variant={project.hasUpvoted ? "default" : "outline"}
+              onClick={handleUpvoteClick}
+              className="rounded-full px-4 py-2 text-sm font-semibold"
             >
               ↑ {project.upvotes}
             </Button>
-          </SignInButton>
-        )}
-      </div>
-      <div className="flex flex-wrap items-center gap-4 text-sm text-zinc-500">
-        <span className="flex items-center gap-2">
-          <Avatar className="h-9 w-9 bg-zinc-100 text-sm font-semibold text-zinc-600">
-            <AvatarFallback>{project.leadInitials}</AvatarFallback>
-          </Avatar>
-          <span>
-            Lead <span className="font-medium text-zinc-900">{project.lead}</span>
-          </span>
-        </span>
-        <Separator orientation="vertical" className="hidden h-6 lg:block" />
-        <span>
-          Team <span className="font-medium text-zinc-900">{project.team}</span>
-        </span>
+          ) : (
+            <SignInButton mode="modal">
+              <Button
+                variant="outline"
+                onClick={(e) => e.stopPropagation()}
+                className="rounded-full border-zinc-200 px-4 py-2 text-sm font-semibold"
+              >
+                ↑ {project.upvotes}
+              </Button>
+            </SignInButton>
+          )}
+        </div>
       </div>
     </div>
   );
