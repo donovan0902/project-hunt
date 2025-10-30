@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
   const { id } = use(params);
   const projectId = id as Id<"projects">;
   const project = useQuery(api.projects.getById, { projectId });
-  const updateProject = useMutation(api.projects.updateProject);
+  const updateProject = useAction(api.projects.updateProject);
 
   const [formData, setFormData] = useState({
     name: "",

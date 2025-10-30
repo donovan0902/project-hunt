@@ -204,7 +204,25 @@ export const confirmProject = mutation({
   },
 });
 
-export const updateProject = mutation({
+export const updateProjectFields = internalMutation({
+  args: {
+    projectId: v.id("projects"),
+    name: v.string(),
+    summary: v.string(),
+    team: v.string(),
+    headline: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.projectId, {
+      name: args.name,
+      summary: args.summary,
+      team: args.team,
+      headline: args.headline,
+    });
+  },
+});
+
+export const updateProject = action({
   args: {
     projectId: v.id("projects"),
     name: v.string(),
@@ -218,7 +236,9 @@ export const updateProject = mutation({
       throw new Error("Unauthorized");
     }
 
-    const project = await ctx.db.get(args.projectId);
+    const project = await ctx.runQuery(internal.projects.getProject, {
+      projectId: args.projectId,
+    });
     if (!project) {
       throw new Error("Project not found");
     }
@@ -228,11 +248,27 @@ export const updateProject = mutation({
       throw new Error("You can only edit your own projects");
     }
 
-    await ctx.db.patch(args.projectId, {
+    await ctx.runMutation(internal.projects.updateProjectFields, {
+      projectId: args.projectId,
       name: args.name,
       summary: args.summary,
       team: args.team,
       headline: args.headline,
+    });
+
+    const text = args.headline
+      ? `${args.name}\n${args.headline}\n\n${args.summary}`
+      : `${args.name}\n\n${args.summary}`;
+
+    const { entryId } = await rag.add(ctx, {
+      namespace: "projects",
+      text,
+      key: args.projectId,
+    });
+
+    await ctx.runMutation(internal.projects.updateEntryId, {
+      projectId: args.projectId,
+      entryId,
     });
   },
 });
