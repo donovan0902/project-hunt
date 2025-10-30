@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CommentForm } from "./CommentForm";
-import { useUser } from "@clerk/nextjs";
+import { SignInButton, useUser } from "@clerk/nextjs";
 import { Id } from "@/convex/_generated/dataModel";
 
 interface Comment {
@@ -17,6 +17,8 @@ interface Comment {
   parentCommentId?: Id<"comments">;
   createdAt: number;
   isDeleted?: boolean;
+  upvotes?: number;
+  hasUpvoted?: boolean;
 }
 
 interface CommentThreadProps {
@@ -34,8 +36,11 @@ export function CommentThread({
 }: CommentThreadProps) {
   const { user } = useUser();
   const deleteComment = useMutation(api.comments.deleteComment);
+  const toggleCommentUpvote = useMutation(api.comments.toggleCommentUpvote);
+  const { isAuthenticated } = useConvexAuth();
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isTogglingUpvote, setIsTogglingUpvote] = useState(false);
 
   // Get replies to this comment
   const replies = allComments.filter(
@@ -101,6 +106,23 @@ export function CommentThread({
     return null;
   }
 
+  const currentUpvotes = comment.upvotes ?? 0;
+  const hasUpvoted = comment.hasUpvoted ?? false;
+
+  const handleToggleUpvote = async () => {
+    if (isTogglingUpvote) return;
+
+    setIsTogglingUpvote(true);
+    try {
+      await toggleCommentUpvote({ commentId: comment._id });
+    } catch (error) {
+      console.error("Failed to toggle comment upvote:", error);
+      alert("Failed to update upvote. Please try again.");
+    } finally {
+      setIsTogglingUpvote(false);
+    }
+  };
+
   return (
     <div>
       <div className="rounded-lg border border-zinc-200 bg-white p-4">
@@ -123,6 +145,28 @@ export function CommentThread({
               {comment.content}
             </p>
             <div className="mt-2 flex items-center gap-2">
+              {isAuthenticated ? (
+                <Button
+                  variant={hasUpvoted ? "default" : "outline"}
+                  size="sm"
+                  onClick={handleToggleUpvote}
+                  disabled={isTogglingUpvote}
+                  className="h-7 px-2 text-xs"
+                >
+                  ↑ {currentUpvotes}
+                </Button>
+              ) : (
+                <SignInButton mode="modal">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => e.stopPropagation()}
+                    className="h-7 px-2 text-xs"
+                  >
+                    ↑ {currentUpvotes}
+                  </Button>
+                </SignInButton>
+              )}
               {depth < 3 && (
                 <Button
                   variant="ghost"

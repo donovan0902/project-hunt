@@ -27,8 +27,16 @@ export default defineSchema({
     parentCommentId: v.optional(v.id("comments")),
     createdAt: v.number(),
     isDeleted: v.optional(v.boolean()),
+    upvotes: v.optional(v.number()),
   })
     .index("by_project", ["projectId"])
     .index("by_parent", ["parentCommentId"]),
+  commentUpvotes: defineTable({
+    commentId: v.id("comments"),
+    userId: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_comment", ["commentId"])
+    .index("by_comment_and_user", ["commentId", "userId"])
+    .index("by_user", ["userId"]),
 });
-

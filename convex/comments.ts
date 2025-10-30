@@ -19,6 +19,7 @@ export const addComment = mutation({
       content: args.content,
       parentCommentId: args.parentCommentId,
       createdAt: Date.now(),
+      upvotes: 0,
     });
   },
 });
@@ -34,8 +35,31 @@ export const getComments = query({
       .filter((q) => q.neq(q.field("isDeleted"), true))
       .collect();
 
-    // Sort by createdAt ascending (oldest first)
-    return comments.sort((a, b) => a.createdAt - b.createdAt);
+    const sorted = comments.sort((a, b) => a.createdAt - b.createdAt);
+
+    const identity = await ctx.auth.getUserIdentity();
+    const userId = identity?.subject;
+
+    if (!userId) {
+      return sorted.map((comment) => ({
+        ...comment,
+        upvotes: comment.upvotes ?? 0,
+        hasUpvoted: false,
+      }));
+    }
+
+    const userUpvotes = await ctx.db
+      .query("commentUpvotes")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    const upvotedCommentIds = new Set(userUpvotes.map((upvote) => upvote.commentId));
+
+    return sorted.map((comment) => ({
+      ...comment,
+      upvotes: comment.upvotes ?? 0,
+      hasUpvoted: upvotedCommentIds.has(comment._id),
+    }));
   },
 });
 
@@ -62,6 +86,57 @@ export const deleteComment = mutation({
     // Soft delete to maintain thread integrity
     await ctx.db.patch(args.commentId, {
       isDeleted: true,
+      upvotes: 0,
     });
+
+    const existingUpvotes = await ctx.db
+      .query("commentUpvotes")
+      .withIndex("by_comment", (q) => q.eq("commentId", args.commentId))
+      .collect();
+
+    await Promise.all(existingUpvotes.map((upvote) => ctx.db.delete(upvote._id)));
+  },
+});
+
+export const toggleCommentUpvote = mutation({
+  args: {
+    commentId: v.id("comments"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const comment = await ctx.db.get(args.commentId);
+    if (!comment || comment.isDeleted) {
+      throw new Error("Comment not found");
+    }
+
+    const userId = identity.subject;
+    const existing = await ctx.db
+      .query("commentUpvotes")
+      .withIndex("by_comment_and_user", (q) =>
+        q.eq("commentId", args.commentId).eq("userId", userId)
+      )
+      .unique();
+
+    const currentUpvotes = comment.upvotes ?? 0;
+
+    if (existing) {
+      await ctx.db.delete(existing._id);
+      const updatedCount = Math.max(currentUpvotes - 1, 0);
+      await ctx.db.patch(args.commentId, { upvotes: updatedCount });
+      return { upvotes: updatedCount, hasUpvoted: false };
+    } else {
+      await ctx.db.insert("commentUpvotes", {
+        commentId: args.commentId,
+        userId,
+        createdAt: Date.now(),
+      });
+      const updatedCount = currentUpvotes + 1;
+      await ctx.db.patch(args.commentId, { upvotes: updatedCount });
+      return { upvotes: updatedCount, hasUpvoted: true };
+    }
   },
 });
