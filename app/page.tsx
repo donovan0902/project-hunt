@@ -44,7 +44,6 @@ const FORUMS = [
 
 
 export default function Home() {
-  const router = useRouter();
   const [query, setQuery] = useState("");
   const projects = useQuery(api.projects.list);
   const upvoteProject = useMutation(api.projects.upvote);
@@ -74,7 +73,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-zinc-50">
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 pb-16 pt-10">
-        <Header query={query} setQuery={setQuery} router={router} />
         <section className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="space-y-6">
             <div>
@@ -103,48 +101,6 @@ export default function Home() {
         </section>
       </main>
     </div>
-  );
-}
-
-function Header({
-  query,
-  setQuery,
-  router,
-}: {
-  query: string;
-  setQuery: (value: string) => void;
-  router: ReturnType<typeof useRouter>;
-}) {
-  return (
-    <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <div className="flex items-center gap-3">
-        <div>
-          <p className="text-xl font-semibold text-zinc-900">Garden</p>
-        </div>
-      </div>
-      <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row md:items-center">
-        <Input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search projects, teams, or leads"
-          className="md:w-72"
-        />
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            className="whitespace-nowrap"
-            onClick={() => router.push("/submit")}
-          >
-            Share Project
-          </Button>
-          <Avatar className="h-10 w-10 border border-zinc-900/10 bg-zinc-900 text-white">
-            <AvatarFallback className="bg-transparent text-sm font-medium text-white">
-              DL
-            </AvatarFallback>
-          </Avatar>
-        </div>
-      </div>
-    </header>
   );
 }
 

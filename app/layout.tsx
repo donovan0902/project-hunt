@@ -10,6 +10,7 @@ import {
   SignedOut,
   UserButton,
 } from '@clerk/nextjs'
+import { Header } from "@/components/header";
 
 
 const geistSans = Geist({
@@ -40,6 +41,7 @@ export default function RootLayout({
       >
         <ClerkProvider>
           <ConvexClientProvider>
+            <Header />
             {children}
           </ConvexClientProvider>
         </ClerkProvider>
