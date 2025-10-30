@@ -20,8 +20,8 @@ export function CommentForm({
   projectId,
   parentCommentId,
   onCancel,
-  placeholder = "Add a comment...",
-  submitText = "Post Comment",
+  placeholder = "What do you think?",
+  submitText = "Comment",
 }: CommentFormProps) {
   const { isAuthenticated } = useConvexAuth();
   const addComment = useMutation(api.comments.addComment);
@@ -68,7 +68,7 @@ export function CommentForm({
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder={placeholder}
-        className="min-h-20 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
+        className="min-h-12 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
         disabled={isSubmitting}
       />
       <div className="mt-2 flex justify-end gap-2">

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { SignInButton } from "@clerk/nextjs";
 import { MessageCircle } from "lucide-react";
@@ -213,8 +214,11 @@ function EmptyState() {
 function Forums() {
   return (
     <div className="flex flex-col gap-4">
-      <div>
+      <div className="flex items-center gap-2">
         <h3 className="text-2xl font-semibold text-zinc-900">Discussion threads</h3>
+        <Badge variant="outline" className="text-xs">
+          Coming soon
+        </Badge>
       </div>
       <div className="flex flex-col divide-y divide-zinc-200 border-t border-zinc-200">
         {FORUMS.map((forum) => (
