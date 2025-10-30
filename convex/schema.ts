@@ -13,5 +13,12 @@ export default defineSchema({
     status: v.union(v.literal("pending"), v.literal("active")),
     userId: v.string(),
   }),
+  upvotes: defineTable({
+    projectId: v.id("projects"),
+    userId: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_and_user", ["projectId", "userId"]),
 });
 

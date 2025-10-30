@@ -138,6 +138,48 @@ export const getProjectsByEntryIds = internalQuery({
   },
 });
 
+export const addUpvoteCounts = internalQuery({
+  args: {
+    projects: v.array(
+      v.object({
+        _id: v.id("projects"),
+        name: v.string(),
+        summary: v.string(),
+        team: v.string(),
+        lead: v.string(),
+        leadInitials: v.string(),
+        upvotes: v.number(),
+        entryId: v.optional(v.string()),
+        status: v.union(v.literal("pending"), v.literal("active")),
+        userId: v.string(),
+        _creationTime: v.number(),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const projectsWithCounts = await Promise.all(
+      args.projects.map(async (project) => {
+        const upvotes = await ctx.db
+          .query("upvotes")
+          .withIndex("by_project", (q) => q.eq("projectId", project._id))
+          .collect();
+
+        return {
+          _id: project._id,
+          name: project.name,
+          summary: project.summary,
+          team: project.team,
+          lead: project.lead,
+          leadInitials: project.leadInitials,
+          upvotes: upvotes.length,
+        };
+      })
+    );
+
+    return projectsWithCounts;
+  },
+});
+
 export const deleteProject = internalMutation({
   args: {
     projectId: v.id("projects"),
@@ -237,8 +279,72 @@ export const list = query({
       .query("projects")
       .filter((q) => q.eq(q.field("status"), "active"))
       .collect();
+
+    // Get current user identity
+    const identity = await ctx.auth.getUserIdentity();
+    const userId = identity?.subject;
+
+    // Get upvote counts and user upvote status for each project
+    const projectsWithUpvotes = await Promise.all(
+      projects.map(async (project) => {
+        const upvotes = await ctx.db
+          .query("upvotes")
+          .withIndex("by_project", (q) => q.eq("projectId", project._id))
+          .collect();
+
+        // Check if current user has upvoted this project
+        let hasUpvoted = false;
+        if (userId) {
+          const userUpvote = upvotes.find((u) => u.userId === userId);
+          hasUpvoted = !!userUpvote;
+        }
+
+        return {
+          ...project,
+          upvotes: upvotes.length,
+          hasUpvoted,
+        };
+      })
+    );
+
     // Sort by upvotes descending
-    return projects.sort((a, b) => b.upvotes - a.upvotes);
+    return projectsWithUpvotes.sort((a, b) => b.upvotes - a.upvotes);
+  },
+});
+
+export const getUserProjects = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+
+    const userId = identity.subject;
+
+    // Get all projects created by this user (both pending and active)
+    const projects = await ctx.db
+      .query("projects")
+      .filter((q) => q.eq(q.field("userId"), userId))
+      .collect();
+
+    // Get upvote counts for each project
+    const projectsWithUpvotes = await Promise.all(
+      projects.map(async (project) => {
+        const upvotes = await ctx.db
+          .query("upvotes")
+          .withIndex("by_project", (q) => q.eq("projectId", project._id))
+          .collect();
+
+        return {
+          ...project,
+          upvotes: upvotes.length,
+        };
+      })
+    );
+
+    // Sort by creation time descending (newest first)
+    return projectsWithUpvotes.sort((a, b) => b._creationTime - a._creationTime);
   },
 });
 
@@ -247,7 +353,35 @@ export const getById = query({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.projectId);
+    const project = await ctx.db.get(args.projectId);
+    if (!project) {
+      return null;
+    }
+
+    // Get upvote count
+    const upvotes = await ctx.db
+      .query("upvotes")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    // Check if current user has upvoted
+    const identity = await ctx.auth.getUserIdentity();
+    let hasUpvoted = false;
+    if (identity) {
+      const userUpvote = await ctx.db
+        .query("upvotes")
+        .withIndex("by_project_and_user", (q) =>
+          q.eq("projectId", args.projectId).eq("userId", identity.subject)
+        )
+        .first();
+      hasUpvoted = !!userUpvote;
+    }
+
+    return {
+      ...project,
+      upvotes: upvotes.length,
+      hasUpvoted,
+    };
   },
 });
 
@@ -293,11 +427,17 @@ export const getSimilarProjects = action({
       }
     );
 
-    return similarProjects;
+    // Add computed upvote counts
+    const projectsWithCounts = await ctx.runQuery(
+      internal.projects.addUpvoteCounts,
+      { projects: similarProjects }
+    );
+
+    return projectsWithCounts;
   },
 });
 
-export const upvote = mutation({
+export const toggleUpvote = mutation({
   args: {
     projectId: v.id("projects"),
   },
@@ -307,14 +447,64 @@ export const upvote = mutation({
       throw new Error("Unauthorized");
     }
 
-    const project = await ctx.db.get(args.projectId);
-    if (!project) {
-      throw new Error("Project not found");
+    const userId = identity.subject;
+
+    // Check if user has already upvoted
+    const existingUpvote = await ctx.db
+      .query("upvotes")
+      .withIndex("by_project_and_user", (q) =>
+        q.eq("projectId", args.projectId).eq("userId", userId)
+      )
+      .first();
+
+    if (existingUpvote) {
+      // User has upvoted - remove it
+      await ctx.db.delete(existingUpvote._id);
+    } else {
+      // User hasn't upvoted - add it
+      await ctx.db.insert("upvotes", {
+        projectId: args.projectId,
+        userId,
+        createdAt: Date.now(),
+      });
+    }
+  },
+});
+
+export const hasUserUpvoted = query({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return false;
     }
 
-    await ctx.db.patch(args.projectId, {
-      upvotes: project.upvotes + 1,
-    });
+    const userId = identity.subject;
+
+    const upvote = await ctx.db
+      .query("upvotes")
+      .withIndex("by_project_and_user", (q) =>
+        q.eq("projectId", args.projectId).eq("userId", userId)
+      )
+      .first();
+
+    return !!upvote;
+  },
+});
+
+export const getUpvoteCount = query({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const upvotes = await ctx.db
+      .query("upvotes")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    return upvotes.length;
   },
 });
 

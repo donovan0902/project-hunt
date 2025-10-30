@@ -16,13 +16,13 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const { isAuthenticated } = useConvexAuth();
   const projectId = id as Id<"projects">;
   const project = useQuery(api.projects.getById, { projectId });
-  const upvoteProject = useMutation(api.projects.upvote);
+  const toggleUpvote = useMutation(api.projects.toggleUpvote);
 
   const handleUpvote = async () => {
     try {
-      await upvoteProject({ projectId });
+      await toggleUpvote({ projectId });
     } catch (error) {
-      console.error("Failed to upvote:", error);
+      console.error("Failed to toggle upvote:", error);
     }
   };
 
@@ -79,9 +79,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
             </div>
             {isAuthenticated ? (
               <Button
-                variant="outline"
+                variant={project.hasUpvoted ? "default" : "outline"}
                 onClick={handleUpvote}
-                className="rounded-full border-zinc-200 px-6 py-3 text-base font-semibold"
+                className="rounded-full px-6 py-3 text-base font-semibold"
               >
                 ↑ {project.upvotes}
               </Button>

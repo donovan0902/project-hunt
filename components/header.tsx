@@ -49,6 +49,11 @@ export function Header() {
           </Unauthenticated>
 
           <Authenticated>
+            <Link href="/my-projects">
+              <Button size="sm" variant="ghost">
+                My Projects
+              </Button>
+            </Link>
             <Link href="/submit">
               <Button size="sm" variant="default">
                 Submit Project

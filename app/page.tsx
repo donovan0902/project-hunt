@@ -22,6 +22,7 @@ type Project = {
   lead: string;
   leadInitials: string;
   upvotes: number;
+  hasUpvoted: boolean;
 };
 
 const FORUMS = [
@@ -49,7 +50,7 @@ const FORUMS = [
 export default function Home() {
   const [query, setQuery] = useState("");
   const projects = useQuery(api.projects.list);
-  const upvoteProject = useMutation(api.projects.upvote);
+  const toggleUpvote = useMutation(api.projects.toggleUpvote);
 
   const filteredProjects = useMemo(() => {
     if (!projects) return [];
@@ -67,9 +68,9 @@ export default function Home() {
 
   const handleUpvote = async (projectId: Id<"projects">) => {
     try {
-      await upvoteProject({ projectId });
+      await toggleUpvote({ projectId });
     } catch (error) {
-      console.error("Failed to upvote:", error);
+      console.error("Failed to toggle upvote:", error);
     }
   };
 
@@ -138,9 +139,9 @@ function ProjectRow({
         </div>
         {isAuthenticated ? (
           <Button
-            variant="outline"
+            variant={project.hasUpvoted ? "default" : "outline"}
             onClick={handleUpvoteClick}
-            className="rounded-full border-zinc-200 px-4 py-2 text-sm font-semibold"
+            className="rounded-full px-4 py-2 text-sm font-semibold"
           >
             ↑ {project.upvotes}
           </Button>
