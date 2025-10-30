@@ -11,6 +11,7 @@ export const create = action({
     name: v.string(),
     summary: v.string(),
     team: v.string(),
+    headline: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{
     projectId: Id<"projects">;
@@ -34,7 +35,9 @@ export const create = action({
     );
 
     // Embed the project content
-    const text = `${args.name}\n\n${args.summary}`;
+    const text = args.headline 
+      ? `${args.name}\n${args.headline}\n\n${args.summary}`
+      : `${args.name}\n\n${args.summary}`;
     const { entryId } = await rag.add(ctx, {
       namespace: "projects",
       text,
@@ -75,6 +78,7 @@ export const createProject = internalMutation({
     team: v.string(),
     status: v.union(v.literal("pending"), v.literal("active")),
     userId: v.string(),
+    headline: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("projects", {
@@ -84,6 +88,7 @@ export const createProject = internalMutation({
       upvotes: 0,
       status: args.status,
       userId: args.userId,
+      headline: args.headline,
     });
   },
 });
@@ -205,6 +210,7 @@ export const updateProject = mutation({
     name: v.string(),
     summary: v.string(),
     team: v.string(),
+    headline: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -226,6 +232,7 @@ export const updateProject = mutation({
       name: args.name,
       summary: args.summary,
       team: args.team,
+      headline: args.headline,
     });
   },
 });
@@ -276,7 +283,9 @@ export const backfillProject = action({
       return { message: "Project already has an embedding", entryId: project.entryId };
     }
 
-    const text = `${project.name}\n\n${project.summary}`;
+    const text = project.headline 
+      ? `${project.name}\n${project.headline}\n\n${project.summary}`
+      : `${project.name}\n\n${project.summary}`;
     const { entryId } = await rag.add(ctx, {
       namespace: "projects",
       text,
@@ -453,7 +462,9 @@ export const getSimilarProjects = action({
       return [];
     }
 
-    const text = `${project.name}\n\n${project.summary}`;
+    const text = project.headline 
+      ? `${project.name}\n${project.headline}\n\n${project.summary}`
+      : `${project.name}\n\n${project.summary}`;
     const { entries } = await rag.search(ctx, {
       namespace: "projects",
       query: text,

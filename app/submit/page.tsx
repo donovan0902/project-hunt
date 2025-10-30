@@ -15,6 +15,7 @@ export default function SubmitProject() {
   const confirmProject = useMutation(api.projects.confirmProject);
   const [formData, setFormData] = useState({
     name: "",
+    headline: "",
     description: "",
     team: "",
   });
@@ -29,6 +30,7 @@ export default function SubmitProject() {
         name: formData.name,
         summary: formData.description,
         team: formData.team,
+        headline: formData.headline || undefined,
       });
       
       // If no similar projects found, auto-confirm and go home
@@ -91,6 +93,18 @@ export default function SubmitProject() {
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Atlas Deploy Hub"
                 required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="headline" className="text-sm font-medium text-zinc-900">
+                Headline <span className="text-xs text-zinc-500">(optional)</span>
+              </label>
+              <Input
+                id="headline"
+                value={formData.headline}
+                onChange={(e) => setFormData({ ...formData, headline: e.target.value })}
+                placeholder="Your project one-liner"
               />
             </div>
 

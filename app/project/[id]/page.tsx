@@ -85,17 +85,15 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               </Button>
             )}
           </div>
-          <Avatar className="h-10 w-10 border border-zinc-900/10 bg-zinc-900 text-white">
-            <AvatarFallback className="bg-transparent text-sm font-medium text-white">
-              DL
-            </AvatarFallback>
-          </Avatar>
         </div>
 
         <div className="space-y-8">
           <div className="flex items-start justify-between gap-6">
             <div className="flex-1">
               <h1 className="text-4xl font-bold text-zinc-900">{project.name}</h1>
+              {project.headline && (
+                <p className="mt-2 text-lg text-zinc-600">{project.headline}</p>
+              )}
             </div>
             {isAuthenticated ? (
               <Button

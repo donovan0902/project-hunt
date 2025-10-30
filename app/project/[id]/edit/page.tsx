@@ -7,7 +7,6 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Id } from "@/convex/_generated/dataModel";
 
 export default function EditProject({ params }: { params: Promise<{ id: string }> }) {
@@ -19,6 +18,7 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
 
   const [formData, setFormData] = useState({
     name: "",
+    headline: "",
     description: "",
     team: "",
   });
@@ -30,6 +30,7 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
     if (project) {
       setFormData({
         name: project.name,
+        headline: project.headline || "",
         description: project.summary,
         team: project.team,
       });
@@ -47,6 +48,7 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
         name: formData.name,
         summary: formData.description,
         team: formData.team,
+        headline: formData.headline || undefined,
       });
 
       router.push(`/project/${id}`);
@@ -81,27 +83,14 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
   return (
     <div className="min-h-screen bg-zinc-50">
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 pb-16 pt-10">
-        <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-3">
-            <div>
-              <p className="text-xl font-semibold text-zinc-900">Garden</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              onClick={() => router.push(`/project/${id}`)}
-              className="whitespace-nowrap"
-            >
-              Back to Project
-            </Button>
-            <Avatar className="h-10 w-10 border border-zinc-900/10 bg-zinc-900 text-white">
-              <AvatarFallback className="bg-transparent text-sm font-medium text-white">
-                DL
-              </AvatarFallback>
-            </Avatar>
-          </div>
-        </header>
+        <div className="mb-4">
+          <Button
+            variant="outline"
+            onClick={() => router.push(`/project/${id}`)}
+          >
+            ← Back to Project
+          </Button>
+        </div>
 
         <section className="mx-auto w-full max-w-2xl">
           <div className="mb-6">
@@ -122,6 +111,18 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Atlas Deploy Hub"
                 required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="headline" className="text-sm font-medium text-zinc-900">
+                Headline <span className="text-xs text-zinc-500">(optional)</span>
+              </label>
+              <Input
+                id="headline"
+                value={formData.headline}
+                onChange={(e) => setFormData({ ...formData, headline: e.target.value })}
+                placeholder="Your project one-liner"
               />
             </div>
 

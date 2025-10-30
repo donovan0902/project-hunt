@@ -19,6 +19,7 @@ type Project = {
   _id: Id<"projects">;
   name: string;
   summary: string;
+  headline?: string;
   team: string;
   upvotes: number;
   commentCount: number;
@@ -62,6 +63,7 @@ export default function Home() {
       return (
         project.name.toLowerCase().includes(q) ||
         project.summary.toLowerCase().includes(q) ||
+        (project.headline && project.headline.toLowerCase().includes(q)) ||
         project.team.toLowerCase().includes(q) ||
         project.creatorName.toLowerCase().includes(q)
       );
@@ -142,7 +144,11 @@ function ProjectRow({
       <div className="min-w-0 space-y-4">
         <div className="min-w-0">
           <h3 className="text-xl font-semibold text-zinc-900">{project.name}</h3>
-          <p className="mt-1 text-sm text-zinc-500 break-words">{project.summary}</p>
+          {project.headline && (
+            <p className="mt-1 text-sm text-zinc-500 break-words">
+              {project.headline}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-4 text-sm text-zinc-500">
           <span className="flex items-center gap-2">

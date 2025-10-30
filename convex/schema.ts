@@ -10,7 +10,7 @@ export default defineSchema({
     entryId: v.optional(v.string()),
     status: v.union(v.literal("pending"), v.literal("active")),
     userId: v.string(),
-
+    headline: v.optional(v.string()),
   }),
   upvotes: defineTable({
     projectId: v.id("projects"),
