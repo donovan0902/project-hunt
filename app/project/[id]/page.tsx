@@ -8,15 +8,18 @@ import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { SignInButton } from "@clerk/nextjs";
+import { SignInButton, useUser } from "@clerk/nextjs";
 
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { id } = use(params);
   const { isAuthenticated } = useConvexAuth();
+  const { user } = useUser();
   const projectId = id as Id<"projects">;
   const project = useQuery(api.projects.getById, { projectId });
   const toggleUpvote = useMutation(api.projects.toggleUpvote);
+
+  const isOwner = user && project && project.userId === user.id;
 
   const handleUpvote = async () => {
     try {
@@ -58,13 +61,23 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   return (
     <div className="min-h-screen bg-zinc-50">
       <main className="mx-auto max-w-4xl px-6 py-10">
-        <div className="mb-8 flex items-center gap-4">
-          <Button
-            variant="outline"
-            onClick={() => router.push("/")}
-          >
-            ← Back
-          </Button>
+        <div className="mb-8 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              onClick={() => router.push("/")}
+            >
+              ← Back
+            </Button>
+            {isOwner && (
+              <Button
+                variant="outline"
+                onClick={() => router.push(`/project/${id}/edit`)}
+              >
+                Edit
+              </Button>
+            )}
+          </div>
           <Avatar className="h-10 w-10 border border-zinc-900/10 bg-zinc-900 text-white">
             <AvatarFallback className="bg-transparent text-sm font-medium text-white">
               DL

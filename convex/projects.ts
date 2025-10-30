@@ -210,6 +210,48 @@ export const confirmProject = mutation({
   },
 });
 
+export const updateProject = mutation({
+  args: {
+    projectId: v.id("projects"),
+    name: v.string(),
+    summary: v.string(),
+    team: v.string(),
+    lead: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    // Only allow the project creator to edit
+    if (project.userId !== identity.subject) {
+      throw new Error("You can only edit your own projects");
+    }
+
+    // Regenerate lead initials
+    const leadInitials = args.lead
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+
+    await ctx.db.patch(args.projectId, {
+      name: args.name,
+      summary: args.summary,
+      team: args.team,
+      lead: args.lead,
+      leadInitials,
+    });
+  },
+});
+
 export const cancelProject = action({
   args: {
     projectId: v.id("projects"),

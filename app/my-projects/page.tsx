@@ -104,6 +104,11 @@ function ProjectCard({ project }: { project: Project }) {
     }
   };
 
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    router.push(`/project/${project._id}/edit`);
+  };
+
   return (
     <div
       className={`rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-900/5 ${
@@ -128,9 +133,18 @@ function ProjectCard({ project }: { project: Project }) {
             </div>
             <p className="mt-1 text-sm text-zinc-500">{project.summary}</p>
           </div>
-          <div className="flex items-center gap-2 text-sm font-semibold text-zinc-600">
-            <span>↑</span>
-            <span>{project.upvotes}</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-sm font-semibold text-zinc-600">
+              <span>↑</span>
+              <span>{project.upvotes}</span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleEdit}
+            >
+              Edit
+            </Button>
           </div>
         </div>
 
