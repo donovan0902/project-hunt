@@ -5,7 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 
 type Project = {
@@ -13,10 +13,10 @@ type Project = {
   name: string;
   summary: string;
   team: string;
-  lead: string;
-  leadInitials: string;
   upvotes: number;
   status: "pending" | "active";
+  creatorName: string;
+  creatorAvatar: string;
 };
 
 export default function MyProjectsPage() {
@@ -151,10 +151,11 @@ function ProjectCard({ project }: { project: Project }) {
         <div className="flex flex-wrap items-center gap-4 text-sm text-zinc-500">
           <span className="flex items-center gap-2">
             <Avatar className="h-8 w-8 bg-zinc-100 text-xs font-semibold text-zinc-600">
-              <AvatarFallback>{project.leadInitials}</AvatarFallback>
+              <AvatarImage src={project.creatorAvatar} alt={project.creatorName || "User"} />
+              <AvatarFallback>{(project.creatorName || "U").slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             <span>
-              Lead <span className="font-medium text-zinc-900">{project.lead}</span>
+              By <span className="font-medium text-zinc-900">{project.creatorName || "Unknown User"}</span>
             </span>
           </span>
           <Separator orientation="vertical" className="h-5" />

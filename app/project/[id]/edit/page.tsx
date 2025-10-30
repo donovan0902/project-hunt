@@ -21,7 +21,6 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
     name: "",
     description: "",
     team: "",
-    lead: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,7 +32,6 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
         name: project.name,
         description: project.summary,
         team: project.team,
-        lead: project.lead,
       });
       setIsLoading(false);
     }
@@ -49,7 +47,6 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
         name: formData.name,
         summary: formData.description,
         team: formData.team,
-        lead: formData.lead,
       });
 
       router.push(`/project/${id}`);
@@ -151,19 +148,6 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
                 value={formData.team}
                 onChange={(e) => setFormData({ ...formData, team: e.target.value })}
                 placeholder="Platform Ops"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="lead" className="text-sm font-medium text-zinc-900">
-                Project lead
-              </label>
-              <Input
-                id="lead"
-                value={formData.lead}
-                onChange={(e) => setFormData({ ...formData, lead: e.target.value })}
-                placeholder="Your name"
                 required
               />
             </div>

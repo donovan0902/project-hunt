@@ -9,8 +9,11 @@
  */
 
 import type * as comments from "../comments.js";
+import type * as http from "../http.js";
+import type * as migrations_removeLeadFields from "../migrations/removeLeadFields.js";
 import type * as projects from "../projects.js";
 import type * as rag from "../rag.js";
+import type * as users from "../users.js";
 
 import type {
   ApiFromModules,
@@ -28,8 +31,11 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   comments: typeof comments;
+  http: typeof http;
+  "migrations/removeLeadFields": typeof migrations_removeLeadFields;
   projects: typeof projects;
   rag: typeof rag;
+  users: typeof users;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
 

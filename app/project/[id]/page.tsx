@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { CommentForm } from "@/components/CommentForm";
@@ -120,10 +120,11 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           <div className="flex flex-wrap items-center gap-4 text-base">
             <span className="flex items-center gap-2">
               <Avatar className="h-10 w-10 bg-zinc-100 text-sm font-semibold text-zinc-600">
-                <AvatarFallback>{project.leadInitials}</AvatarFallback>
+                <AvatarImage src={project.creatorAvatar} alt={project.creatorName || "User"} />
+                <AvatarFallback>{(project.creatorName || "U").slice(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
               <span className="text-zinc-500">
-                Lead <span className="font-medium text-zinc-900">{project.lead}</span>
+                By <span className="font-medium text-zinc-900">{project.creatorName || "Unknown User"}</span>
               </span>
             </span>
             <Separator orientation="vertical" className="h-6" />

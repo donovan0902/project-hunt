@@ -5,7 +5,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { useState, useEffect } from "react";
 
@@ -14,10 +14,10 @@ type Project = {
   name: string;
   summary: string;
   team: string;
-  lead: string;
-  leadInitials: string;
   upvotes: number;
   status?: "pending" | "active";
+  creatorName: string;
+  creatorAvatar: string;
 };
 
 export default function ConfirmSubmission() {
@@ -142,12 +142,13 @@ export default function ConfirmSubmission() {
               <div className="flex flex-wrap items-center gap-4 text-sm text-zinc-500">
                 <span className="flex items-center gap-2">
                   <Avatar className="h-9 w-9 bg-zinc-100 text-sm font-semibold text-zinc-600">
-                    <AvatarFallback>{project.leadInitials}</AvatarFallback>
+                    <AvatarImage src={project.creatorAvatar} alt={project.creatorName || "User"} />
+                    <AvatarFallback>{(project.creatorName || "U").slice(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <span>
-                    Lead{" "}
+                    By{" "}
                     <span className="font-medium text-zinc-900">
-                      {project.lead}
+                      {project.creatorName || "Unknown User"}
                     </span>
                   </span>
                 </span>
@@ -238,11 +239,12 @@ function SimilarProjectCard({ project }: { project: Project }) {
         <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500">
           <span className="flex items-center gap-2">
             <Avatar className="h-7 w-7 bg-zinc-100 text-xs font-semibold text-zinc-600">
-              <AvatarFallback>{project.leadInitials}</AvatarFallback>
+              <AvatarImage src={project.creatorAvatar} alt={project.creatorName || "User"} />
+              <AvatarFallback>{(project.creatorName || "U").slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             <span>
-              Lead{" "}
-              <span className="font-medium text-zinc-900">{project.lead}</span>
+              By{" "}
+              <span className="font-medium text-zinc-900">{project.creatorName || "Unknown User"}</span>
             </span>
           </span>
           <Separator

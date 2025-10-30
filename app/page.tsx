@@ -9,7 +9,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { SignInButton } from "@clerk/nextjs";
 import { MessageCircle } from "lucide-react";
@@ -20,11 +20,11 @@ type Project = {
   name: string;
   summary: string;
   team: string;
-  lead: string;
-  leadInitials: string;
   upvotes: number;
   commentCount: number;
   hasUpvoted: boolean;
+  creatorName: string;
+  creatorAvatar: string;
 };
 
 const FORUMS = [
@@ -63,7 +63,7 @@ export default function Home() {
         project.name.toLowerCase().includes(q) ||
         project.summary.toLowerCase().includes(q) ||
         project.team.toLowerCase().includes(q) ||
-        project.lead.toLowerCase().includes(q)
+        project.creatorName.toLowerCase().includes(q)
       );
     });
   }, [query, projects]);
@@ -147,10 +147,11 @@ function ProjectRow({
         <div className="flex flex-wrap items-center gap-4 text-sm text-zinc-500">
           <span className="flex items-center gap-2">
             <Avatar className="h-9 w-9 bg-zinc-100 text-sm font-semibold text-zinc-600">
-              <AvatarFallback>{project.leadInitials}</AvatarFallback>
+              <AvatarImage src={project.creatorAvatar} alt={project.creatorName || "User"} />
+              <AvatarFallback>{(project.creatorName || "U").slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             <span>
-              Lead <span className="font-medium text-zinc-900">{project.lead}</span>
+              By <span className="font-medium text-zinc-900">{project.creatorName || "Unknown User"}</span>
             </span>
           </span>
           <Separator orientation="vertical" className="hidden h-6 lg:block" />

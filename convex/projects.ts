@@ -4,13 +4,13 @@ import { internal } from "./_generated/api";
 import { rag } from "./rag";
 import type { Id } from "./_generated/dataModel";
 import type { EntryId } from "@convex-dev/rag";
+import { userByExternalId } from "./users";
 
 export const create = action({
   args: {
     name: v.string(),
     summary: v.string(),
     team: v.string(),
-    lead: v.string(),
   },
   handler: async (ctx, args): Promise<{
     projectId: Id<"projects">;
@@ -19,8 +19,6 @@ export const create = action({
       name: string;
       summary: string;
       team: string;
-      lead: string;
-      leadInitials: string;
       upvotes: number;
     }>;
   }> => {
@@ -75,24 +73,14 @@ export const createProject = internalMutation({
     name: v.string(),
     summary: v.string(),
     team: v.string(),
-    lead: v.string(),
     status: v.union(v.literal("pending"), v.literal("active")),
     userId: v.string(),
   },
   handler: async (ctx, args) => {
-    const leadInitials = args.lead
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-
     return await ctx.db.insert("projects", {
       name: args.name,
       summary: args.summary,
       team: args.team,
-      lead: args.lead,
-      leadInitials,
       upvotes: 0,
       status: args.status,
       userId: args.userId,
@@ -146,8 +134,6 @@ export const addUpvoteCounts = internalQuery({
         name: v.string(),
         summary: v.string(),
         team: v.string(),
-        lead: v.string(),
-        leadInitials: v.string(),
         upvotes: v.number(),
         entryId: v.optional(v.string()),
         status: v.union(v.literal("pending"), v.literal("active")),
@@ -164,14 +150,17 @@ export const addUpvoteCounts = internalQuery({
           .withIndex("by_project", (q) => q.eq("projectId", project._id))
           .collect();
 
+        // Get creator information
+        const creator = await userByExternalId(ctx, project.userId);
+
         return {
           _id: project._id,
           name: project.name,
           summary: project.summary,
           team: project.team,
-          lead: project.lead,
-          leadInitials: project.leadInitials,
           upvotes: upvotes.length,
+          creatorName: creator?.name ?? "Unknown User",
+          creatorAvatar: creator?.avatarUrlId ?? "",
         };
       })
     );
@@ -216,7 +205,6 @@ export const updateProject = mutation({
     name: v.string(),
     summary: v.string(),
     team: v.string(),
-    lead: v.string(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -234,20 +222,10 @@ export const updateProject = mutation({
       throw new Error("You can only edit your own projects");
     }
 
-    // Regenerate lead initials
-    const leadInitials = args.lead
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-
     await ctx.db.patch(args.projectId, {
       name: args.name,
       summary: args.summary,
       team: args.team,
-      lead: args.lead,
-      leadInitials,
     });
   },
 });
@@ -347,11 +325,16 @@ export const list = query({
           hasUpvoted = !!userUpvote;
         }
 
+        // Get creator information
+        const creator = await userByExternalId(ctx, project.userId);
+        
         return {
           ...project,
           upvotes: upvotes.length,
           commentCount: comments.length,
           hasUpvoted,
+          creatorName: creator?.name ?? "Unknown User",
+          creatorAvatar: creator?.avatarUrlId ?? "",
         };
       })
     );
@@ -377,7 +360,7 @@ export const getUserProjects = query({
       .filter((q) => q.eq(q.field("userId"), userId))
       .collect();
 
-    // Get upvote counts for each project
+    // Get upvote counts and creator info for each project
     const projectsWithUpvotes = await Promise.all(
       projects.map(async (project) => {
         const upvotes = await ctx.db
@@ -385,9 +368,14 @@ export const getUserProjects = query({
           .withIndex("by_project", (q) => q.eq("projectId", project._id))
           .collect();
 
+        // Get creator information
+        const creator = await userByExternalId(ctx, project.userId);
+
         return {
           ...project,
           upvotes: upvotes.length,
+          creatorName: creator?.name ?? "Unknown User",
+          creatorAvatar: creator?.avatarUrlId ?? "",
         };
       })
     );
@@ -426,10 +414,15 @@ export const getById = query({
       hasUpvoted = !!userUpvote;
     }
 
+    // Get creator information
+    const creator = await userByExternalId(ctx, project.userId);
+
     return {
       ...project,
       upvotes: upvotes.length,
       hasUpvoted,
+      creatorName: creator?.name ?? "Unknown User",
+      creatorAvatar: creator?.avatarUrlId ?? "",
     };
   },
 });
@@ -447,9 +440,9 @@ export const getSimilarProjects = action({
       name: string;
       summary: string;
       team: string;
-      lead: string;
-      leadInitials: string;
       upvotes: number;
+      creatorName: string;
+      creatorAvatar: string;
     }>
   > => {
     const project = await ctx.runQuery(internal.projects.getProject, {

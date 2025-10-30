@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { userByExternalId } from "./users";
 
 export const addComment = mutation({
   args: {
@@ -41,11 +42,20 @@ export const getComments = query({
     const userId = identity?.subject;
 
     if (!userId) {
-      return sorted.map((comment) => ({
-        ...comment,
-        upvotes: comment.upvotes ?? 0,
-        hasUpvoted: false,
-      }));
+      // Enrich comments with user data even for unauthenticated users
+      const enrichedComments = await Promise.all(
+        sorted.map(async (comment) => {
+          const user = await userByExternalId(ctx, comment.userId);
+          return {
+            ...comment,
+            upvotes: comment.upvotes ?? 0,
+            hasUpvoted: false,
+            userName: user?.name ?? "Unknown User",
+            userAvatar: user?.avatarUrlId ?? "",
+          };
+        })
+      );
+      return enrichedComments;
     }
 
     const userUpvotes = await ctx.db
@@ -55,11 +65,21 @@ export const getComments = query({
 
     const upvotedCommentIds = new Set(userUpvotes.map((upvote) => upvote.commentId));
 
-    return sorted.map((comment) => ({
-      ...comment,
-      upvotes: comment.upvotes ?? 0,
-      hasUpvoted: upvotedCommentIds.has(comment._id),
-    }));
+    // Enrich comments with user data
+    const enrichedComments = await Promise.all(
+      sorted.map(async (comment) => {
+        const user = await userByExternalId(ctx, comment.userId);
+        return {
+          ...comment,
+          upvotes: comment.upvotes ?? 0,
+          hasUpvoted: upvotedCommentIds.has(comment._id),
+          userName: user?.name ?? "Unknown User",
+          userAvatar: user?.avatarUrlId ?? "",
+        };
+      })
+    );
+
+    return enrichedComments;
   },
 });
 

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CommentForm } from "./CommentForm";
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { Id } from "@/convex/_generated/dataModel";
@@ -19,6 +19,8 @@ interface Comment {
   isDeleted?: boolean;
   upvotes?: number;
   hasUpvoted?: boolean;
+  userName: string;
+  userAvatar: string;
 }
 
 interface CommentThreadProps {
@@ -62,31 +64,6 @@ export function CommentThread({
     return new Date(timestamp).toLocaleDateString();
   };
 
-  // Get user initials from userId (simple approach)
-  const getUserInitials = (userId: string) => {
-    // If user is current user, use their data
-    if (user?.id === userId) {
-      const firstName = user.firstName || "";
-      const lastName = user.lastName || "";
-      if (firstName && lastName) {
-        return `${firstName[0]}${lastName[0]}`.toUpperCase();
-      }
-      return userId.slice(0, 2).toUpperCase();
-    }
-    // For other users, use first 2 chars of userId
-    return userId.slice(0, 2).toUpperCase();
-  };
-
-  const getUserName = (userId: string) => {
-    if (user?.id === userId) {
-      const firstName = user.firstName || "";
-      const lastName = user.lastName || "";
-      if (firstName && lastName) {
-        return `${firstName} ${lastName}`;
-      }
-    }
-    return `User ${userId.slice(0, 8)}`;
-  };
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this comment?")) return;
@@ -128,14 +105,15 @@ export function CommentThread({
       <div className="rounded-lg border border-zinc-200 bg-white p-4">
         <div className="flex items-start gap-3">
           <Avatar className="h-8 w-8 bg-zinc-100">
+            <AvatarImage src={comment.userAvatar} alt={comment.userName || "User"} />
             <AvatarFallback className="text-xs font-semibold text-zinc-600">
-              {getUserInitials(comment.userId)}
+              {(comment.userName || "U").slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-medium text-zinc-900">
-                {getUserName(comment.userId)}
+                {comment.userName || "Unknown User"}
               </span>
               <span className="text-sm text-zinc-500">
                 {timeAgo(comment.createdAt)}

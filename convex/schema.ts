@@ -6,12 +6,11 @@ export default defineSchema({
     name: v.string(),
     summary: v.string(),
     team: v.string(),
-    lead: v.string(),
-    leadInitials: v.string(),
     upvotes: v.number(),
     entryId: v.optional(v.string()),
     status: v.union(v.literal("pending"), v.literal("active")),
     userId: v.string(),
+
   }),
   upvotes: defineTable({
     projectId: v.id("projects"),
@@ -39,4 +38,10 @@ export default defineSchema({
     .index("by_comment", ["commentId"])
     .index("by_comment_and_user", ["commentId", "userId"])
     .index("by_user", ["userId"]),
+  users: defineTable({
+    name: v.string(),
+    externalId: v.string(),
+    avatarUrlId: v.string(),
+    email: v.optional(v.string()),
+  }).index("byExternalId", ["externalId"]),
 });

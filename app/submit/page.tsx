@@ -17,7 +17,6 @@ export default function SubmitProject() {
     name: "",
     description: "",
     team: "",
-    lead: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -30,7 +29,6 @@ export default function SubmitProject() {
         name: formData.name,
         summary: formData.description,
         team: formData.team,
-        lead: formData.lead,
       });
       
       // If no similar projects found, auto-confirm and go home
@@ -119,19 +117,6 @@ export default function SubmitProject() {
                 value={formData.team}
                 onChange={(e) => setFormData({ ...formData, team: e.target.value })}
                 placeholder="Platform Ops"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="lead" className="text-sm font-medium text-zinc-900">
-                Project lead
-              </label>
-              <Input
-                id="lead"
-                value={formData.lead}
-                onChange={(e) => setFormData({ ...formData, lead: e.target.value })}
-                placeholder="Your name"
                 required
               />
             </div>
