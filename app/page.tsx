@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 
@@ -10,6 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
+import { SignInButton } from "@clerk/nextjs";
+
 
 type Project = {
   _id: Id<"projects">;
@@ -112,6 +115,7 @@ function ProjectRow({
   onUpvote: (projectId: Id<"projects">) => void;
 }) {
   const router = useRouter();
+  const { isAuthenticated } = useConvexAuth();
 
   const handleProjectClick = () => {
     router.push(`/project/${project._id}`);
@@ -123,7 +127,7 @@ function ProjectRow({
   };
 
   return (
-    <div 
+    <div
       className="flex flex-col gap-4 border-b border-zinc-200/80 pb-6 pt-6 first:pt-0 last:border-b-0 last:pb-0 cursor-pointer hover:bg-zinc-100 rounded-lg transition-colors px-4 -mx-4"
       onClick={handleProjectClick}
     >
@@ -132,13 +136,25 @@ function ProjectRow({
           <h3 className="text-xl font-semibold text-zinc-900">{project.name}</h3>
           <p className="mt-1 text-sm text-zinc-500">{project.summary}</p>
         </div>
-        <Button
-          variant="outline"
-          onClick={handleUpvoteClick}
-          className="rounded-full border-zinc-200 px-4 py-2 text-sm font-semibold"
-        >
-          ↑ {project.upvotes}
-        </Button>
+        {isAuthenticated ? (
+          <Button
+            variant="outline"
+            onClick={handleUpvoteClick}
+            className="rounded-full border-zinc-200 px-4 py-2 text-sm font-semibold"
+          >
+            ↑ {project.upvotes}
+          </Button>
+        ) : (
+          <SignInButton mode="modal">
+            <Button
+              variant="outline"
+              onClick={(e) => e.stopPropagation()}
+              className="rounded-full border-zinc-200 px-4 py-2 text-sm font-semibold"
+            >
+              ↑ {project.upvotes}
+            </Button>
+          </SignInButton>
+        )}
       </div>
       <div className="flex flex-wrap items-center gap-4 text-sm text-zinc-500">
         <span className="flex items-center gap-2">

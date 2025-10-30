@@ -24,10 +24,15 @@ export const create = action({
       upvotes: number;
     }>;
   }> => {
+
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
     // Create project as "pending"
     const projectId: Id<"projects"> = await ctx.runMutation(
       internal.projects.createProject,
-      { ...args, status: "pending" as const }
+      { ...args, status: "pending" as const, userId: identity.subject }
     );
 
     // Embed the project content
@@ -72,6 +77,7 @@ export const createProject = internalMutation({
     team: v.string(),
     lead: v.string(),
     status: v.union(v.literal("pending"), v.literal("active")),
+    userId: v.string(),
   },
   handler: async (ctx, args) => {
     const leadInitials = args.lead
@@ -89,6 +95,7 @@ export const createProject = internalMutation({
       leadInitials,
       upvotes: 0,
       status: args.status,
+      userId: args.userId,
     });
   },
 });
@@ -295,6 +302,11 @@ export const upvote = mutation({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
     const project = await ctx.db.get(args.projectId);
     if (!project) {
       throw new Error("Project not found");

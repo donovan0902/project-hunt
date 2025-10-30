@@ -49,6 +49,11 @@ export function Header() {
           </Unauthenticated>
 
           <Authenticated>
+            <Link href="/submit">
+              <Button size="sm" variant="default">
+                Submit Project
+              </Button>
+            </Link>
             <UserButton
               appearance={{
                 elements: {

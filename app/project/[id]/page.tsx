@@ -1,17 +1,19 @@
 "use client";
 
 import { use } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { SignInButton } from "@clerk/nextjs";
 
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { id } = use(params);
+  const { isAuthenticated } = useConvexAuth();
   const projectId = id as Id<"projects">;
   const project = useQuery(api.projects.getById, { projectId });
   const upvoteProject = useMutation(api.projects.upvote);
@@ -75,13 +77,24 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
             <div className="flex-1">
               <h1 className="text-4xl font-bold text-zinc-900">{project.name}</h1>
             </div>
-            <Button
-              variant="outline"
-              onClick={handleUpvote}
-              className="rounded-full border-zinc-200 px-6 py-3 text-base font-semibold"
-            >
-              ↑ {project.upvotes}
-            </Button>
+            {isAuthenticated ? (
+              <Button
+                variant="outline"
+                onClick={handleUpvote}
+                className="rounded-full border-zinc-200 px-6 py-3 text-base font-semibold"
+              >
+                ↑ {project.upvotes}
+              </Button>
+            ) : (
+              <SignInButton mode="modal">
+                <Button
+                  variant="outline"
+                  className="rounded-full border-zinc-200 px-6 py-3 text-base font-semibold"
+                >
+                  ↑ {project.upvotes}
+                </Button>
+              </SignInButton>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-4 text-base">

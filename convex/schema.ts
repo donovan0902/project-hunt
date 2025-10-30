@@ -11,6 +11,7 @@ export default defineSchema({
     upvotes: v.number(),
     entryId: v.optional(v.string()),
     status: v.union(v.literal("pending"), v.literal("active")),
+    userId: v.string(),
   }),
 });
 
