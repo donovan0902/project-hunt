@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
+import { SearchBar } from "@/components/SearchBar";
 
 export function Header() {
   return (
@@ -23,14 +22,7 @@ export function Header() {
 
         {/* Center: Search Bar */}
         <div className="hidden md:flex flex-1 max-w-md mx-8">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-            <Input
-              type="search"
-              placeholder="Search projects..."
-              className="w-full pl-9 bg-zinc-50 border-zinc-200 focus-visible:ring-zinc-400"
-            />
-          </div>
+          <SearchBar className="w-full" />
         </div>
 
         {/* Right: Auth Buttons */}
@@ -76,14 +68,7 @@ export function Header() {
 
       {/* Mobile Search Bar */}
       <div className="md:hidden border-t border-zinc-200 px-4 py-3 bg-white">
-        <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-          <Input
-            type="search"
-            placeholder="Search projects..."
-            className="w-full pl-9 bg-zinc-50 border-zinc-200 focus-visible:ring-zinc-400"
-          />
-        </div>
+        <SearchBar className="w-full" />
       </div>
     </header>
   );

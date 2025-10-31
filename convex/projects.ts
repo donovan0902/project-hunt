@@ -472,6 +472,51 @@ export const getById = query({
   },
 });
 
+export const searchProjects = action({
+  args: {
+    query: v.string(),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<
+    Array<{
+      _id: Id<"projects">;
+      name: string;
+      headline?: string;
+    }>
+  > => {
+    // Don't search if query is too short
+    if (args.query.trim().length < 2) {
+      return [];
+    }
+
+    // Search using RAG
+    const { entries } = await rag.search(ctx, {
+      namespace: "projects",
+      query: args.query,
+      limit: 8,
+      vectorScoreThreshold: 0.5,
+    });
+
+    // Get full project details
+    const projects = await ctx.runQuery(
+      internal.projects.getProjectsByEntryIds,
+      {
+        entryIds: entries.map((e) => e.entryId),
+        excludeProjectId: "" as Id<"projects">, // No exclusions for search
+      }
+    );
+
+    // Return simplified data for search results
+    return projects.map((p) => ({
+      _id: p._id,
+      name: p.name,
+      headline: p.headline,
+    }));
+  },
+});
+
 export const getSimilarProjects = action({
   args: {
     projectId: v.id("projects"),
@@ -498,7 +543,7 @@ export const getSimilarProjects = action({
       return [];
     }
 
-    const text = project.headline 
+    const text = project.headline
       ? `${project.name}\n${project.headline}\n\n${project.summary}`
       : `${project.name}\n\n${project.summary}`;
     const { entries } = await rag.search(ctx, {
