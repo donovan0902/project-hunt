@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -7,7 +8,6 @@ import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { useState, useEffect } from "react";
 
 type Project = {
   _id: Id<"projects">;
@@ -21,7 +21,7 @@ type Project = {
   creatorAvatar: string;
 };
 
-export default function ConfirmSubmission() {
+function ConfirmSubmissionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectId = searchParams.get("projectId") as Id<"projects"> | null;
@@ -228,6 +228,22 @@ export default function ConfirmSubmission() {
         </section>
       </main>
     </div>
+  );
+}
+
+export default function ConfirmSubmission() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-zinc-50">
+          <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 pb-16 pt-10">
+            <p className="text-center text-zinc-500">Loading...</p>
+          </main>
+        </div>
+      }
+    >
+      <ConfirmSubmissionContent />
+    </Suspense>
   );
 }
 
