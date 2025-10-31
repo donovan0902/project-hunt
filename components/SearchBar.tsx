@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Input } from "@/components/ui/input";
-import { Search, Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Search } from "lucide-react";
 import Link from "next/link";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -47,10 +48,10 @@ export function SearchBar({ className }: SearchBarProps) {
       }
 
       setIsLoading(true);
+      setIsOpen(true); // Open dropdown immediately when loading starts
       try {
         const searchResults = await searchProjects({ query: debouncedQuery });
         setResults(searchResults);
-        setIsOpen(true);
       } catch (error) {
         console.error("Search failed:", error);
         setResults([]);
@@ -86,20 +87,26 @@ export function SearchBar({ className }: SearchBarProps) {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
         <Input
           type="search"
-          placeholder="Search projects..."
+          placeholder="Find tools and projects..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="w-full pl-9 bg-zinc-50 border-zinc-200 focus-visible:ring-zinc-400"
         />
-        {isLoading && (
-          <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 animate-spin" />
-        )}
       </div>
 
       {/* Dropdown Results */}
       {isOpen && (
         <div className="absolute top-full mt-2 w-full bg-white border border-zinc-200 rounded-md shadow-lg max-h-96 overflow-y-auto z-50">
-          {results.length > 0 ? (
+          {isLoading ? (
+            <div className="py-2">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="px-4 py-3">
+                  <Skeleton className="h-5 w-3/4 mb-2" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              ))}
+            </div>
+          ) : results.length > 0 ? (
             <div className="py-2">
               {results.map((result) => (
                 <Link
@@ -118,11 +125,9 @@ export function SearchBar({ className }: SearchBarProps) {
               ))}
             </div>
           ) : (
-            !isLoading && (
-              <div className="px-4 py-8 text-center text-sm text-zinc-500">
-                No projects found
-              </div>
-            )
+            <div className="px-4 py-8 text-center text-sm text-zinc-500">
+              No projects found
+            </div>
           )}
         </div>
       )}

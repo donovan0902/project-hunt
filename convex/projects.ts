@@ -115,7 +115,7 @@ export const getProject = internalQuery({
 export const getProjectsByEntryIds = internalQuery({
   args: {
     entryIds: v.array(v.string()),
-    excludeProjectId: v.id("projects"),
+    excludeProjectId: v.optional(v.id("projects")),
   },
   handler: async (ctx, args) => {
     const projects = await ctx.db
@@ -126,7 +126,7 @@ export const getProjectsByEntryIds = internalQuery({
     return projects.filter(
       (p) =>
         args.entryIds.includes(p.entryId ?? "") &&
-        p._id !== args.excludeProjectId
+        (!args.excludeProjectId || p._id !== args.excludeProjectId)
     );
   },
 });
@@ -496,7 +496,7 @@ export const searchProjects = action({
       namespace: "projects",
       query: args.query,
       limit: 8,
-      vectorScoreThreshold: 0.5,
+      vectorScoreThreshold: 0.3,
     });
 
     // Get full project details
@@ -504,7 +504,7 @@ export const searchProjects = action({
       internal.projects.getProjectsByEntryIds,
       {
         entryIds: entries.map((e) => e.entryId),
-        excludeProjectId: "" as Id<"projects">, // No exclusions for search
+        excludeProjectId: undefined, // No exclusions for search
       }
     );
 
