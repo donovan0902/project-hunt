@@ -111,7 +111,7 @@ export function SearchBar({ className }: SearchBarProps) {
               {results.map((result) => (
                 <Link
                   key={result._id}
-                  href={`/projects/${result._id}`}
+                  href={`/project/${result._id}`}
                   onClick={handleResultClick}
                   className="block px-4 py-3 hover:bg-zinc-50 transition-colors"
                 >
