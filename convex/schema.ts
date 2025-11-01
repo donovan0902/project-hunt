@@ -13,7 +13,10 @@ export default defineSchema({
     headline: v.optional(v.string()),
     allFields: v.optional(v.string()),
   })
-    .searchIndex("allFields", { searchField: "allFields" }),
+    .searchIndex("allFields", { searchField: "allFields" })
+    .index("by_entryId", ["entryId"])
+    .index("by_status", ["status"])
+    .index("by_userId", ["userId"]),
   upvotes: defineTable({
     projectId: v.id("projects"),
     userId: v.string(),

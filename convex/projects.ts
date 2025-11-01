@@ -8,6 +8,7 @@ import { rag } from "./rag";
 import type { Id } from "./_generated/dataModel";
 import type { EntryId } from "@convex-dev/rag";
 import { userByExternalId } from "./users";
+import { hybridRank } from "@convex-dev/rag";
 
 export const create = action({
   args: {
@@ -115,20 +116,29 @@ export const getProject = internalQuery({
   },
 });
 
+// Internal query: Fetch multiple projects by their RAG entryIds (used for vector/hybrid search results)
+// Returns raw project documents without computed fields
 export const getProjectsByEntryIds = internalQuery({
   args: {
     entryIds: v.array(v.string()),
     excludeProjectId: v.optional(v.id("projects")),
   },
   handler: async (ctx, args) => {
-    const projects = await ctx.db
-      .query("projects")
-      .filter((q) => q.eq(q.field("status"), "active"))
-      .collect();
+    // Use index to efficiently query by entryId instead of loading all projects
+    const projects = await Promise.all(
+      args.entryIds.map(async (entryId) => {
+        return await ctx.db
+          .query("projects")
+          .withIndex("by_entryId", (q) => q.eq("entryId", entryId))
+          .filter((q) => q.eq(q.field("status"), "active"))
+          .first();
+      })
+    );
 
     return projects.filter(
-      (p) =>
-        args.entryIds.includes(p.entryId ?? "") &&
+      (p): p is NonNullable<typeof p> =>
+        p !== undefined &&
+        p !== null &&
         (!args.excludeProjectId || p._id !== args.excludeProjectId)
     );
   },
@@ -346,7 +356,7 @@ export const list = query({
   handler: async (ctx) => {
     const projects = await ctx.db
       .query("projects")
-      .filter((q) => q.eq(q.field("status"), "active"))
+      .withIndex("by_status", (q) => q.eq("status", "active"))
       .collect();
 
     // Get current user identity
@@ -406,7 +416,7 @@ export const getUserProjects = query({
     // Get all projects created by this user (both pending and active)
     const projects = await ctx.db
       .query("projects")
-      .filter((q) => q.eq(q.field("userId"), userId))
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
       .collect();
 
     // Get upvote counts and creator info for each project
@@ -434,6 +444,8 @@ export const getUserProjects = query({
   },
 });
 
+// Public query: Fetch a single project by its Convex _id (used for project detail pages)
+// Returns enriched project with upvote counts, user upvote status, and creator info
 export const getById = query({
   args: {
     projectId: v.id("projects"),
@@ -476,6 +488,7 @@ export const getById = query({
   },
 });
 
+// hybrid search for projects (used for search bar)
 export const searchProjects = action({
   args: {
     query: v.string(),
@@ -495,22 +508,49 @@ export const searchProjects = action({
       return [];
     }
 
-    // Search using RAG
-    const { entries } = await rag.search(ctx, {
-      namespace: "projects",
-      query: args.query,
-      limit: 8,
-      vectorScoreThreshold: 0.3,
-    });
+    // Run both searches in parallel for faster results
+    const [{ entries }, fullTextSearchProjects] = await Promise.all([
+      rag.search(ctx, {
+        namespace: "projects",
+        query: args.query,
+        limit: 8,
+        vectorScoreThreshold: 0.3,
+      }),
+      ctx.runQuery(internal.projects.fullTextSearchProjects, {
+        query: args.query,
+        limit: 8,
+      }),
+    ]);
 
-    // Get full project details
-    const projects = await ctx.runQuery(
-      internal.projects.getProjectsByEntryIds,
+    // Extract entryIds from both search results
+    const entryIds = entries.map((e) => e.entryId);
+    const fullTextEntryIds = fullTextSearchProjects
+      .map((p) => p.entryId)
+      .filter((id): id is string => id !== undefined);
+
+    // hybrid rank the results
+    const hybridRankedEntryIds = hybridRank(
+      [entryIds, fullTextEntryIds],
       {
-        entryIds: entries.map((e) => e.entryId),
-        excludeProjectId: undefined, // No exclusions for search
+        k: 10,
+        weights: [3, 2],
       }
     );
+
+    // Fetch all projects in one query (getProjectsByEntryIds queries all active projects anyway)
+    const allProjects = await ctx.runQuery(
+      internal.projects.getProjectsByEntryIds,
+      {
+        entryIds: hybridRankedEntryIds,
+        excludeProjectId: undefined,
+      }
+    );
+
+    // Build a map for quick lookup and maintain hybrid rank order
+    const projectMap = new Map(allProjects.map((p) => [p.entryId!, p]));
+    const projects = hybridRankedEntryIds
+      .map((entryId) => projectMap.get(entryId))
+      .filter((p): p is NonNullable<typeof p> => p !== undefined);
 
     // Return simplified data for search results
     return projects.map((p) => ({
@@ -521,6 +561,7 @@ export const searchProjects = action({
   },
 });
 
+// semantic search for similar projects
 export const getSimilarProjects = action({
   args: {
     projectId: v.id("projects"),
@@ -572,6 +613,21 @@ export const getSimilarProjects = action({
     );
 
     return projectsWithCounts;
+  },
+});
+
+// full text search for projects
+export const fullTextSearchProjects = internalQuery({
+  args: {
+    query: v.string(),
+    limit: v.number(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("projects")
+      .withSearchIndex("allFields", (q) => q.search("allFields", args.query))
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .take(args.limit);
   },
 });
 
