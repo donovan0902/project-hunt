@@ -11,7 +11,9 @@ export default defineSchema({
     status: v.union(v.literal("pending"), v.literal("active")),
     userId: v.string(),
     headline: v.optional(v.string()),
-  }),
+    allFields: v.optional(v.string()),
+  })
+    .searchIndex("allFields", { searchField: "allFields" }),
   upvotes: defineTable({
     projectId: v.id("projects"),
     userId: v.string(),

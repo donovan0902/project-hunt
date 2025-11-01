@@ -1,4 +1,7 @@
-import { mutation, query, action, internalMutation, internalQuery } from "./_generated/server";
+import { mutation, query, action, internalQuery } from "./_generated/server";
+// custom internal mutation for trigger that updates allFields field for projects for full text search
+// this internal mutation will be a wrapper for the createProject and updateProjectFields internal mutations
+import { internalMutation } from "./functions";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { rag } from "./rag";
@@ -256,6 +259,7 @@ export const updateProject = action({
       headline: args.headline,
     });
 
+    // Update the RAG index
     const text = args.headline
       ? `${args.name}\n${args.headline}\n\n${args.summary}`
       : `${args.name}\n\n${args.summary}`;

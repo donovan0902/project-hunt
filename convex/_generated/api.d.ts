@@ -9,6 +9,7 @@
  */
 
 import type * as comments from "../comments.js";
+import type * as functions from "../functions.js";
 import type * as http from "../http.js";
 import type * as migrations_removeLeadFields from "../migrations/removeLeadFields.js";
 import type * as projects from "../projects.js";
@@ -31,6 +32,7 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   comments: typeof comments;
+  functions: typeof functions;
   http: typeof http;
   "migrations/removeLeadFields": typeof migrations_removeLeadFields;
   projects: typeof projects;
