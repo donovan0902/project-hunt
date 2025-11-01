@@ -533,7 +533,7 @@ export const searchProjects = action({
       [entryIds, fullTextEntryIds],
       {
         k: 10,
-        weights: [3, 2],
+        weights: [2, 1],
       }
     );
 
@@ -561,7 +561,8 @@ export const searchProjects = action({
   },
 });
 
-// semantic search for similar projects
+// semantic search for similar projects (used for similar projects section). Can't use hybrid search because the full text search component expressions are limited to 16 terms (words), and we our rag expressions use all fields of a project. 
+// We could potentially do a hybrid search with the full text component expression being the project's title and headline, prolly marginally better results. Not a priority for now.
 export const getSimilarProjects = action({
   args: {
     projectId: v.id("projects"),
