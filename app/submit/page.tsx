@@ -8,9 +8,9 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Id } from "@/convex/_generated/dataModel";
 import { useDropzone } from "react-dropzone";
 import { Upload } from "lucide-react";
+import { SimilarProjectsPreview } from "@/components/SimilarProjectsPreview";
 
 export default function SubmitProject() {
   const router = useRouter();
@@ -109,14 +109,16 @@ export default function SubmitProject() {
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 pb-16 pt-10">
-        <section className="mx-auto w-full max-w-2xl">
-          <div className="mb-6">
-            <h2 className="text-3xl font-semibold tracking-tight">Share a project</h2>
-            <p className="mt-2 text-sm text-zinc-500">
-              Let everyone know what you&apos;re working on
-            </p>
-          </div>
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 pb-16 pt-10">
+        <div className="mb-2">
+          <h2 className="text-3xl font-semibold tracking-tight">Share a project</h2>
+          <p className="mt-2 text-sm text-zinc-500">
+            Let everyone know what you&apos;re working on
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <section className="w-full">
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
@@ -152,10 +154,14 @@ export default function SubmitProject() {
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Description of what you're building"
+                placeholder="Description of what you're building. Who is it for? What is it? What problems does it solve?"
                 className="min-h-24"
+                minLength={200}
                 required
               />
+              <p className="text-xs text-zinc-500">
+                {formData.description.length}/200 characters minimum
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -268,7 +274,16 @@ export default function SubmitProject() {
               </Button>
             </div>
           </form>
-        </section>
+          </section>
+
+          <section className="w-full lg:sticky lg:top-10 lg:self-start">
+            <SimilarProjectsPreview
+              name={formData.name}
+              headline={formData.headline}
+              description={formData.description}
+            />
+          </section>
+        </div>
       </main>
     </div>
   );

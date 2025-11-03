@@ -739,6 +739,65 @@ export const getSimilarProjects = action({
   },
 });
 
+// Search for similar projects based on text input (used for real-time similar projects preview)
+export const searchSimilarProjectsByText = action({
+  args: {
+    name: v.string(),
+    headline: v.optional(v.string()),
+    summary: v.string(),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<
+    Array<{
+      _id: Id<"projects">;
+      name: string;
+      summary: string;
+      team: string;
+      upvotes: number;
+      creatorName: string;
+      creatorAvatar: string;
+      headline?: string;
+    }>
+  > => {
+    // Don't search if inputs are too short
+    if (args.name.trim().length < 2 && args.summary.trim().length < 2) {
+      return [];
+    }
+
+    const text = args.headline
+      ? `${args.name}\n${args.headline}\n\n${args.summary}`
+      : `${args.name}\n\n${args.summary}`;
+
+    const { entries } = await rag.search(ctx, {
+      namespace: "projects",
+      query: text,
+      limit: 5,
+      vectorScoreThreshold: 0.6,
+    });
+
+    const similarProjects = await ctx.runQuery(
+      internal.projects.getProjectsByEntryIds,
+      {
+        entryIds: entries.map((e) => e.entryId),
+        excludeProjectId: undefined,
+      }
+    );
+
+    // Add computed upvote counts and creator info
+    const projectsWithCounts = await ctx.runQuery(
+      internal.projects.addUpvoteCounts,
+      { projects: similarProjects }
+    );
+
+    return projectsWithCounts.map((p) => ({
+      ...p,
+      headline: similarProjects.find((sp) => sp._id === p._id)?.headline,
+    }));
+  },
+});
+
 // full text search for projects
 export const fullTextSearchProjects = internalQuery({
   args: {
