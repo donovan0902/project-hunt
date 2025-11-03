@@ -13,13 +13,17 @@ import { useDropzone } from "react-dropzone";
 import { Upload } from "lucide-react";
 
 function ExistingMediaThumbnail({
-  storageId,
+  media,
   onDelete,
 }: {
-  storageId: Id<"_storage">;
+  media: {
+    _id: Id<"mediaFiles">;
+    storageId: Id<"_storage">;
+    type: string;
+  };
   onDelete: () => void;
 }) {
-  const mediaUrl = useQuery(api.projects.getMediaUrl, { storageId });
+  const mediaUrl = useQuery(api.projects.getMediaUrl, { storageId: media.storageId });
 
   if (!mediaUrl) {
     return (
@@ -29,8 +33,7 @@ function ExistingMediaThumbnail({
     );
   }
 
-  // Determine if it's a video based on file extension or content type
-  const isVideo = mediaUrl.includes('.mp4') || mediaUrl.includes('.webm');
+  const isVideo = media.type === 'video';
 
   return (
     <div className="relative group">
@@ -66,9 +69,11 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
   const { id } = use(params);
   const projectId = id as Id<"projects">;
   const project = useQuery(api.projects.getById, { projectId });
+  const projectMedia = useQuery(api.projects.getProjectMedia, { projectId });
   const updateProject = useAction(api.projects.updateProject);
   const generateUploadUrl = useMutation(api.projects.generateUploadUrl);
-  const deleteMedia = useMutation(api.projects.deleteMedia);
+  const deleteMediaFromProject = useMutation(api.projects.deleteMediaFromProject);
+  const addMediaToProject = useMutation(api.projects.addMediaToProject);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -80,7 +85,6 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [existingMediaFiles, setExistingMediaFiles] = useState<Id<"_storage">[]>([]);
 
   const { getRootProps, getInputProps, fileRejections, isDragActive } = useDropzone({
     accept: {
@@ -100,10 +104,9 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const removeExistingFile = async (storageId: Id<"_storage">) => {
+  const removeExistingFile = async (mediaId: Id<"mediaFiles">) => {
     try {
-      await deleteMedia({ projectId, storageId });
-      setExistingMediaFiles(prev => prev.filter(id => id !== storageId));
+      await deleteMediaFromProject({ projectId, mediaId });
     } catch (error) {
       console.error("Failed to delete media:", error);
       alert("Failed to delete media. Please try again.");
@@ -120,7 +123,6 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
         team: project.team,
         link: project.link || "",
       });
-      setExistingMediaFiles(project.mediaFiles || []);
       setIsLoading(false);
     }
   }, [project]);
@@ -130,44 +132,46 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
     setIsSubmitting(true);
 
     try {
-      let newStorageIds: Id<"_storage">[] = [];
-
-      // Upload new files if any are selected
-      if (selectedFiles.length > 0) {
-        newStorageIds = await Promise.all(
-          selectedFiles.map(async (file) => {
-            // Generate upload URL
-            const uploadUrl = await generateUploadUrl();
-
-            // Upload file
-            const result = await fetch(uploadUrl, {
-              method: "POST",
-              headers: { "Content-Type": file.type },
-              body: file,
-            });
-
-            if (!result.ok) {
-              throw new Error(`Failed to upload ${file.name}`);
-            }
-
-            const { storageId } = await result.json();
-            return storageId;
-          })
-        );
-      }
-
-      // Combine existing and new media files
-      const allMediaFiles = [...existingMediaFiles, ...newStorageIds];
-
+      // Update project fields
       await updateProject({
         projectId,
         name: formData.name,
         summary: formData.description,
         team: formData.team,
         headline: formData.headline || undefined,
-        mediaFiles: allMediaFiles.length > 0 ? allMediaFiles : undefined,
         link: formData.link || undefined,
       });
+
+      // Upload and add new media files if any are selected
+      if (selectedFiles.length > 0) {
+        await Promise.all(
+          selectedFiles.map(async (file) => {
+            // Generate upload URL
+            const uploadUrl = await generateUploadUrl();
+
+            // Upload file to storage
+            const uploadResult = await fetch(uploadUrl, {
+              method: "POST",
+              headers: { "Content-Type": file.type },
+              body: file,
+            });
+
+            if (!uploadResult.ok) {
+              throw new Error(`Failed to upload ${file.name}`);
+            }
+
+            const { storageId } = await uploadResult.json();
+
+            // Add media to project with metadata
+            await addMediaToProject({
+              projectId,
+              storageId,
+              type: file.type.startsWith('video/') ? 'video' : 'image',
+              contentType: file.type,
+            });
+          })
+        );
+      }
 
       router.push(`/project/${id}`);
     } catch (error) {
@@ -290,17 +294,17 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
               </label>
 
               {/* Existing Media Files */}
-              {existingMediaFiles.length > 0 && (
+              {projectMedia && projectMedia.length > 0 && (
                 <div className="mb-4 space-y-2">
                   <div className="text-sm font-medium text-zinc-700">
-                    Current media ({existingMediaFiles.length})
+                    Current media ({projectMedia.length})
                   </div>
                   <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-                    {existingMediaFiles.map((storageId) => (
+                    {projectMedia.map((media) => (
                       <ExistingMediaThumbnail
-                        key={storageId}
-                        storageId={storageId}
-                        onDelete={() => removeExistingFile(storageId)}
+                        key={media._id}
+                        media={media}
+                        onDelete={() => removeExistingFile(media._id)}
                       />
                     ))}
                   </div>

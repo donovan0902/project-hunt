@@ -30,10 +30,55 @@ export const getMediaUrl = query({
   },
 });
 
-export const deleteMedia = mutation({
+export const addMediaToProject = mutation({
   args: {
     projectId: v.id("projects"),
     storageId: v.id("_storage"),
+    type: v.string(),
+    contentType: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    // Only allow the project creator to add media
+    if (project.userId !== identity.subject) {
+      throw new Error("You can only edit your own projects");
+    }
+
+    // Get current max order for this project
+    const existingMedia = await ctx.db
+      .query("mediaFiles")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    const maxOrder = existingMedia.length > 0
+      ? Math.max(...existingMedia.map(m => m.order))
+      : -1;
+
+    // Add new media with next order
+    return await ctx.db.insert("mediaFiles", {
+      projectId: args.projectId,
+      storageId: args.storageId,
+      type: args.type,
+      contentType: args.contentType,
+      order: maxOrder + 1,
+      uploadedAt: Date.now(),
+    });
+  },
+});
+
+export const deleteMediaFromProject = mutation({
+  args: {
+    projectId: v.id("projects"),
+    mediaId: v.id("mediaFiles"),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -51,18 +96,29 @@ export const deleteMedia = mutation({
       throw new Error("You can only edit your own projects");
     }
 
-    // Delete from storage
-    await ctx.storage.delete(args.storageId);
-
-    // Remove from project's mediaFiles array
-    if (project.mediaFiles) {
-      const updatedMediaFiles = project.mediaFiles.filter(
-        (id) => id !== args.storageId
-      );
-      await ctx.db.patch(args.projectId, {
-        mediaFiles: updatedMediaFiles.length > 0 ? updatedMediaFiles : undefined,
-      });
+    const media = await ctx.db.get(args.mediaId);
+    if (!media) {
+      throw new Error("Media not found");
     }
+
+    // Delete from storage
+    await ctx.storage.delete(media.storageId);
+
+    // Delete media record
+    await ctx.db.delete(args.mediaId);
+  },
+});
+
+export const getProjectMedia = query({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("mediaFiles")
+      .withIndex("by_project_ordered", (q) => q.eq("projectId", args.projectId))
+      .order("asc")
+      .collect();
   },
 });
 
@@ -72,7 +128,6 @@ export const create = action({
     summary: v.string(),
     team: v.string(),
     headline: v.optional(v.string()),
-    mediaFiles: v.optional(v.array(v.id("_storage"))),
     link: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{
@@ -141,7 +196,6 @@ export const createProject = internalMutation({
     status: v.union(v.literal("pending"), v.literal("active")),
     userId: v.string(),
     headline: v.optional(v.string()),
-    mediaFiles: v.optional(v.array(v.id("_storage"))),
     link: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -153,7 +207,6 @@ export const createProject = internalMutation({
       status: args.status,
       userId: args.userId,
       headline: args.headline,
-      mediaFiles: args.mediaFiles,
       link: args.link,
     });
   },
@@ -286,7 +339,6 @@ export const updateProjectFields = internalMutation({
     summary: v.string(),
     team: v.string(),
     headline: v.optional(v.string()),
-    mediaFiles: v.optional(v.array(v.id("_storage"))),
     link: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -295,7 +347,6 @@ export const updateProjectFields = internalMutation({
       summary: args.summary,
       team: args.team,
       headline: args.headline,
-      mediaFiles: args.mediaFiles,
       link: args.link,
     });
   },
@@ -308,7 +359,6 @@ export const updateProject = action({
     summary: v.string(),
     team: v.string(),
     headline: v.optional(v.string()),
-    mediaFiles: v.optional(v.array(v.id("_storage"))),
     link: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -335,7 +385,6 @@ export const updateProject = action({
       summary: args.summary,
       team: args.team,
       headline: args.headline,
-      mediaFiles: args.mediaFiles,
       link: args.link,
     });
 

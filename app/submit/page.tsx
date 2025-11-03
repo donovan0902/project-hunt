@@ -17,6 +17,7 @@ export default function SubmitProject() {
   const createProject = useAction(api.projects.create);
   const confirmProject = useMutation(api.projects.confirmProject);
   const generateUploadUrl = useMutation(api.projects.generateUploadUrl);
+  const addMediaToProject = useMutation(api.projects.addMediaToProject);
   const [formData, setFormData] = useState({
     name: "",
     headline: "",
@@ -50,40 +51,45 @@ export default function SubmitProject() {
     setIsSubmitting(true);
 
     try {
-      let storageIds: Id<"_storage">[] = [];
-
-      // Upload files if any are selected
-      if (selectedFiles.length > 0) {
-        storageIds = await Promise.all(
-          selectedFiles.map(async (file) => {
-            // Generate upload URL
-            const uploadUrl = await generateUploadUrl();
-
-            // Upload file
-            const result = await fetch(uploadUrl, {
-              method: "POST",
-              headers: { "Content-Type": file.type },
-              body: file,
-            });
-
-            if (!result.ok) {
-              throw new Error(`Failed to upload ${file.name}`);
-            }
-
-            const { storageId } = await result.json();
-            return storageId;
-          })
-        );
-      }
-
+      // Create project first
       const result = await createProject({
         name: formData.name,
         summary: formData.description,
         team: formData.team,
         headline: formData.headline || undefined,
-        mediaFiles: storageIds.length > 0 ? storageIds : undefined,
         link: formData.link || undefined,
       });
+
+      // Upload and add media files if any are selected
+      if (selectedFiles.length > 0) {
+        await Promise.all(
+          selectedFiles.map(async (file) => {
+            // Generate upload URL
+            const uploadUrl = await generateUploadUrl();
+
+            // Upload file to storage
+            const uploadResult = await fetch(uploadUrl, {
+              method: "POST",
+              headers: { "Content-Type": file.type },
+              body: file,
+            });
+
+            if (!uploadResult.ok) {
+              throw new Error(`Failed to upload ${file.name}`);
+            }
+
+            const { storageId } = await uploadResult.json();
+
+            // Add media to project with metadata
+            await addMediaToProject({
+              projectId: result.projectId,
+              storageId,
+              type: file.type.startsWith('video/') ? 'video' : 'image',
+              contentType: file.type,
+            });
+          })
+        );
+      }
 
       // If no similar projects found, auto-confirm and go home
       if (result.similarProjects.length === 0) {

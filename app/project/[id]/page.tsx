@@ -3,6 +3,7 @@
 import { use } from "react";
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,81 @@ import { Separator } from "@/components/ui/separator";
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { CommentForm } from "@/components/CommentForm";
 import { CommentThread } from "@/components/CommentThread";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+
+function MediaCarousel({ mediaFiles }: { mediaFiles: Array<{
+  _id: Id<"mediaFiles">;
+  storageId: Id<"_storage">;
+  type: string;
+}> }) {
+  if (!mediaFiles || mediaFiles.length === 0) {
+    return null;
+  }
+
+  return (
+    <Carousel className="w-full">
+      <CarouselContent>
+        {mediaFiles.map((media) => (
+          <CarouselItem key={media._id}>
+            <MediaSlide media={media} />
+          </CarouselItem>
+        ))}
+      </CarouselContent>
+      {mediaFiles.length > 1 && (
+        <>
+          <CarouselPrevious />
+          <CarouselNext />
+        </>
+      )}
+    </Carousel>
+  );
+}
+
+function MediaSlide({ media }: { media: {
+  storageId: Id<"_storage">;
+  type: string;
+} }) {
+  const mediaUrl = useQuery(api.projects.getMediaUrl, { storageId: media.storageId });
+
+  if (!mediaUrl) {
+    return (
+      <div className="flex items-center justify-center bg-zinc-100 rounded-lg" style={{ minHeight: "400px" }}>
+        <div className="text-zinc-400">Loading...</div>
+      </div>
+    );
+  }
+
+  const isVideo = media.type === 'video';
+
+  return (
+    <div className="px-2">
+      {isVideo ? (
+        <video
+          src={mediaUrl}
+          controls
+          className="w-full h-auto max-h-[600px] rounded-lg mx-auto"
+          style={{ objectFit: "contain" }}
+        />
+      ) : (
+        <div className="relative w-full mx-auto" style={{ minHeight: "400px", maxHeight: "600px" }}>
+          <Image
+            src={mediaUrl}
+            alt="Project media"
+            fill
+            className="object-contain rounded-lg"
+            unoptimized
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -19,6 +95,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const { user } = useUser();
   const projectId = id as Id<"projects">;
   const project = useQuery(api.projects.getById, { projectId });
+  const projectMedia = useQuery(api.projects.getProjectMedia, { projectId });
   const comments = useQuery(api.comments.getComments, { projectId });
   const toggleUpvote = useMutation(api.projects.toggleUpvote);
 
@@ -121,11 +198,15 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
             </span>
           </div>
 
-          <Separator />
-
           <div>
             <p className="text-base leading-relaxed text-zinc-600">{project.summary}</p>
           </div>
+
+          {projectMedia && projectMedia.length > 0 && (
+            <div className="my-8">
+              <MediaCarousel mediaFiles={projectMedia} />
+            </div>
+          )}
 
           <div id="discussion">
             <div className="space-y-4">

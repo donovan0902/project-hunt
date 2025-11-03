@@ -12,13 +12,22 @@ export default defineSchema({
     userId: v.string(),
     headline: v.optional(v.string()),
     allFields: v.optional(v.string()),
-    mediaFiles: v.optional(v.array(v.id("_storage"))),
     link: v.optional(v.string()),
   })
     .searchIndex("allFields", { searchField: "allFields" })
     .index("by_entryId", ["entryId"])
     .index("by_status", ["status"])
     .index("by_userId", ["userId"]),
+  mediaFiles: defineTable({
+    projectId: v.id("projects"),
+    storageId: v.id("_storage"),
+    type: v.string(),
+    contentType: v.string(),
+    order: v.number(),
+    uploadedAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_ordered", ["projectId", "order"]),
   upvotes: defineTable({
     projectId: v.id("projects"),
     userId: v.string(),
