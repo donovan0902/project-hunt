@@ -21,6 +21,51 @@ export const generateUploadUrl = mutation({
   },
 });
 
+export const getMediaUrl = query({
+  args: {
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.storage.getUrl(args.storageId);
+  },
+});
+
+export const deleteMedia = mutation({
+  args: {
+    projectId: v.id("projects"),
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    // Only allow the project creator to delete media
+    if (project.userId !== identity.subject) {
+      throw new Error("You can only edit your own projects");
+    }
+
+    // Delete from storage
+    await ctx.storage.delete(args.storageId);
+
+    // Remove from project's mediaFiles array
+    if (project.mediaFiles) {
+      const updatedMediaFiles = project.mediaFiles.filter(
+        (id) => id !== args.storageId
+      );
+      await ctx.db.patch(args.projectId, {
+        mediaFiles: updatedMediaFiles.length > 0 ? updatedMediaFiles : undefined,
+      });
+    }
+  },
+});
+
 export const create = action({
   args: {
     name: v.string(),

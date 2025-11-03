@@ -2,12 +2,64 @@
 
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAction, useQuery } from "convex/react";
+import Image from "next/image";
+import { useAction, useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Id } from "@/convex/_generated/dataModel";
+import { useDropzone } from "react-dropzone";
+import { Upload } from "lucide-react";
+
+function ExistingMediaThumbnail({
+  storageId,
+  onDelete,
+}: {
+  storageId: Id<"_storage">;
+  onDelete: () => void;
+}) {
+  const mediaUrl = useQuery(api.projects.getMediaUrl, { storageId });
+
+  if (!mediaUrl) {
+    return (
+      <div className="aspect-square rounded-lg border border-zinc-200 bg-zinc-100 overflow-hidden flex items-center justify-center">
+        <div className="text-xs text-zinc-400">Loading...</div>
+      </div>
+    );
+  }
+
+  // Determine if it's a video based on file extension or content type
+  const isVideo = mediaUrl.includes('.mp4') || mediaUrl.includes('.webm');
+
+  return (
+    <div className="relative group">
+      <div className="aspect-square rounded-lg border border-zinc-200 bg-zinc-100 overflow-hidden">
+        {isVideo ? (
+          <div className="flex h-full w-full items-center justify-center">
+            <div className="text-4xl">🎥</div>
+          </div>
+        ) : (
+          <Image
+            src={mediaUrl}
+            alt="Project media"
+            width={200}
+            height={200}
+            className="h-full w-full object-cover"
+            unoptimized
+          />
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={onDelete}
+        className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 text-white text-xs font-bold hover:bg-red-600 transition-colors"
+      >
+        ×
+      </button>
+    </div>
+  );
+}
 
 export default function EditProject({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -15,15 +67,48 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
   const projectId = id as Id<"projects">;
   const project = useQuery(api.projects.getById, { projectId });
   const updateProject = useAction(api.projects.updateProject);
+  const generateUploadUrl = useMutation(api.projects.generateUploadUrl);
+  const deleteMedia = useMutation(api.projects.deleteMedia);
 
   const [formData, setFormData] = useState({
     name: "",
     headline: "",
     description: "",
     team: "",
+    link: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [existingMediaFiles, setExistingMediaFiles] = useState<Id<"_storage">[]>([]);
+
+  const { getRootProps, getInputProps, fileRejections, isDragActive } = useDropzone({
+    accept: {
+      'image/png': ['.png'],
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/gif': ['.gif'],
+      'image/webp': ['.webp'],
+      'video/mp4': ['.mp4'],
+      'video/webm': ['.webm'],
+    },
+    onDrop: (acceptedFiles) => {
+      setSelectedFiles(prev => [...prev, ...acceptedFiles]);
+    },
+  });
+
+  const removeNewFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeExistingFile = async (storageId: Id<"_storage">) => {
+    try {
+      await deleteMedia({ projectId, storageId });
+      setExistingMediaFiles(prev => prev.filter(id => id !== storageId));
+    } catch (error) {
+      console.error("Failed to delete media:", error);
+      alert("Failed to delete media. Please try again.");
+    }
+  };
 
   // Populate form when project data loads
   useEffect(() => {
@@ -33,7 +118,9 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
         headline: project.headline || "",
         description: project.summary,
         team: project.team,
+        link: project.link || "",
       });
+      setExistingMediaFiles(project.mediaFiles || []);
       setIsLoading(false);
     }
   }, [project]);
@@ -43,12 +130,43 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
     setIsSubmitting(true);
 
     try {
+      let newStorageIds: Id<"_storage">[] = [];
+
+      // Upload new files if any are selected
+      if (selectedFiles.length > 0) {
+        newStorageIds = await Promise.all(
+          selectedFiles.map(async (file) => {
+            // Generate upload URL
+            const uploadUrl = await generateUploadUrl();
+
+            // Upload file
+            const result = await fetch(uploadUrl, {
+              method: "POST",
+              headers: { "Content-Type": file.type },
+              body: file,
+            });
+
+            if (!result.ok) {
+              throw new Error(`Failed to upload ${file.name}`);
+            }
+
+            const { storageId } = await result.json();
+            return storageId;
+          })
+        );
+      }
+
+      // Combine existing and new media files
+      const allMediaFiles = [...existingMediaFiles, ...newStorageIds];
+
       await updateProject({
         projectId,
         name: formData.name,
         summary: formData.description,
         team: formData.team,
         headline: formData.headline || undefined,
+        mediaFiles: allMediaFiles.length > 0 ? allMediaFiles : undefined,
+        link: formData.link || undefined,
       });
 
       router.push(`/project/${id}`);
@@ -151,6 +269,118 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
                 placeholder="Platform Ops"
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="link" className="text-sm font-medium text-zinc-900">
+                Link <span className="text-xs text-zinc-500">(optional)</span>
+              </label>
+              <Input
+                id="link"
+                type="url"
+                value={formData.link}
+                onChange={(e) => setFormData({ ...formData, link: e.target.value })}
+                placeholder="https://example.com"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-900">
+                Media <span className="text-xs text-zinc-500">(optional)</span>
+              </label>
+
+              {/* Existing Media Files */}
+              {existingMediaFiles.length > 0 && (
+                <div className="mb-4 space-y-2">
+                  <div className="text-sm font-medium text-zinc-700">
+                    Current media ({existingMediaFiles.length})
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                    {existingMediaFiles.map((storageId) => (
+                      <ExistingMediaThumbnail
+                        key={storageId}
+                        storageId={storageId}
+                        onDelete={() => removeExistingFile(storageId)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Upload New Files */}
+              <div
+                {...getRootProps()}
+                className={`rounded-lg border-2 border-dashed p-8 text-center transition-colors cursor-pointer ${
+                  isDragActive
+                    ? 'border-zinc-900 bg-zinc-100'
+                    : 'border-zinc-300 bg-zinc-50 hover:border-zinc-400'
+                }`}
+              >
+                <input {...getInputProps()} />
+                <div className="space-y-2">
+                  <Upload className="mx-auto h-10 w-10 text-zinc-400" />
+                  <div className="text-sm text-zinc-600">
+                    {isDragActive ? (
+                      <span className="font-medium text-zinc-900">Drop files here</span>
+                    ) : (
+                      <>
+                        <span className="font-medium text-zinc-900">Click to upload</span> or drag and drop
+                      </>
+                    )}
+                  </div>
+                  <div className="text-xs text-zinc-500">
+                    Images (PNG, JPG, GIF, WebP) or Videos (MP4, WebM)
+                  </div>
+                </div>
+              </div>
+
+              {fileRejections.length > 0 && (
+                <div className="text-sm text-red-600 mt-2">
+                  Invalid file type(s): {fileRejections.map(({ file }) => file.name).join(', ')}.
+                  Please upload images or videos only.
+                </div>
+              )}
+
+              {/* New Files to Upload */}
+              {selectedFiles.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <div className="text-sm font-medium text-zinc-700">
+                    New files to add ({selectedFiles.length})
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                    {selectedFiles.map((file, index) => (
+                      <div key={index} className="relative group">
+                        <div className="aspect-square rounded-lg border border-zinc-200 bg-zinc-100 overflow-hidden">
+                          {file.type.startsWith('image/') ? (
+                            <Image
+                              src={URL.createObjectURL(file)}
+                              alt={file.name}
+                              width={200}
+                              height={200}
+                              className="h-full w-full object-cover"
+                              unoptimized
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                              <div className="text-4xl">🎥</div>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeNewFile(index)}
+                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 text-white text-xs font-bold hover:bg-red-600 transition-colors"
+                        >
+                          ×
+                        </button>
+                        <div className="mt-1 text-xs text-zinc-500 truncate">
+                          {file.name}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-3 pt-4">
