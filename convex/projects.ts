@@ -272,6 +272,9 @@ export const addUpvoteCounts = internalQuery({
         status: v.union(v.literal("pending"), v.literal("active")),
         userId: v.string(),
         _creationTime: v.number(),
+        headline: v.optional(v.string()),
+        allFields: v.optional(v.string()),
+        link: v.optional(v.string()),
       })
     ),
   },
