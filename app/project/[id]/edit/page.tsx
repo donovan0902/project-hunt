@@ -205,14 +205,6 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
   return (
     <div className="min-h-screen bg-zinc-50">
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 pb-16 pt-10">
-        <div className="mb-4">
-          <Button
-            variant="outline"
-            onClick={() => router.push(`/project/${id}`)}
-          >
-            ← Back to Project
-          </Button>
-        </div>
 
         <section className="mx-auto w-full max-w-2xl">
           <div className="mb-6">

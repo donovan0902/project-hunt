@@ -20,11 +20,15 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 
-function MediaCarousel({ mediaFiles }: { mediaFiles: Array<{
-  _id: Id<"mediaFiles">;
-  storageId: Id<"_storage">;
-  type: string;
-}> }) {
+function MediaCarousel({
+  mediaFiles,
+}: {
+  mediaFiles: Array<{
+    _id: Id<"mediaFiles">;
+    storageId: Id<"_storage">;
+    type: string;
+  }>;
+}) {
   if (!mediaFiles || mediaFiles.length === 0) {
     return null;
   }
@@ -48,21 +52,30 @@ function MediaCarousel({ mediaFiles }: { mediaFiles: Array<{
   );
 }
 
-function MediaSlide({ media }: { media: {
-  storageId: Id<"_storage">;
-  type: string;
-} }) {
-  const mediaUrl = useQuery(api.projects.getMediaUrl, { storageId: media.storageId });
+function MediaSlide({
+  media,
+}: {
+  media: {
+    storageId: Id<"_storage">;
+    type: string;
+  };
+}) {
+  const mediaUrl = useQuery(api.projects.getMediaUrl, {
+    storageId: media.storageId,
+  });
 
   if (!mediaUrl) {
     return (
-      <div className="flex items-center justify-center bg-zinc-100 rounded-lg" style={{ minHeight: "400px" }}>
+      <div
+        className="flex items-center justify-center rounded-lg bg-zinc-100"
+        style={{ minHeight: "400px" }}
+      >
         <div className="text-zinc-400">Loading...</div>
       </div>
     );
   }
 
-  const isVideo = media.type === 'video';
+  const isVideo = media.type === "video";
 
   return (
     <div className="px-2">
@@ -70,11 +83,14 @@ function MediaSlide({ media }: { media: {
         <video
           src={mediaUrl}
           controls
-          className="w-full h-auto max-h-[600px] rounded-lg mx-auto"
+          className="mx-auto h-auto w-full max-h-[600px] rounded-lg"
           style={{ objectFit: "contain" }}
         />
       ) : (
-        <div className="relative w-full mx-auto" style={{ minHeight: "400px", maxHeight: "600px" }}>
+        <div
+          className="relative mx-auto w-full"
+          style={{ minHeight: "400px", maxHeight: "600px" }}
+        >
           <Image
             src={mediaUrl}
             alt="Project media"
@@ -88,7 +104,39 @@ function MediaSlide({ media }: { media: {
   );
 }
 
-export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
+function formatProjectLink(link?: string | null): {
+  href: string;
+  label: string;
+} | null {
+  if (!link) {
+    return null;
+  }
+
+  const trimmed = link.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const href = trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
+  try {
+    const hostname = new URL(href).hostname.replace(/^www\./, "");
+    return {
+      href,
+      label: hostname || trimmed,
+    };
+  } catch {
+    return {
+      href,
+      label: trimmed,
+    };
+  }
+}
+
+export default function ProjectPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const router = useRouter();
   const { id } = use(params);
   const { isAuthenticated } = useConvexAuth();
@@ -128,7 +176,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       <div className="min-h-screen bg-zinc-50">
         <div className="mx-auto max-w-4xl px-6 py-16">
           <div className="text-center">
-            <p className="text-xl font-semibold text-zinc-900">Project not found</p>
+            <p className="text-xl font-semibold text-zinc-900">
+              Project not found
+            </p>
             <Button
               variant="outline"
               className="mt-4"
@@ -141,6 +191,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       </div>
     );
   }
+
+  const projectLink = formatProjectLink(project.link);
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -157,7 +209,21 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   Edit
                 </Button>
               )}
-              <h1 className="text-4xl font-bold text-zinc-900">{project.name}</h1>
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="text-4xl font-bold text-zinc-900">
+                  {project.name}
+                </h1>
+                {projectLink && (
+                  <a
+                    href={projectLink.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-900 hover:underline"
+                  >
+                    {projectLink.label}
+                  </a>
+                )}
+              </div>
               {project.headline && (
                 <p className="mt-2 text-lg text-zinc-600">{project.headline}</p>
               )}
@@ -185,21 +251,34 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           <div className="flex flex-wrap items-center gap-4 text-base">
             <span className="flex items-center gap-2">
               <Avatar className="h-10 w-10 bg-zinc-100 text-sm font-semibold text-zinc-600">
-                <AvatarImage src={project.creatorAvatar} alt={project.creatorName || "User"} />
-                <AvatarFallback>{(project.creatorName || "U").slice(0, 2).toUpperCase()}</AvatarFallback>
+                <AvatarImage
+                  src={project.creatorAvatar}
+                  alt={project.creatorName || "User"}
+                />
+                <AvatarFallback>
+                  {(project.creatorName || "U").slice(0, 2).toUpperCase()}
+                </AvatarFallback>
               </Avatar>
               <span className="text-zinc-500">
-                By <span className="font-medium text-zinc-900">{project.creatorName || "Unknown User"}</span>
+                By{" "}
+                <span className="font-medium text-zinc-900">
+                  {project.creatorName || "Unknown User"}
+                </span>
               </span>
             </span>
             <Separator orientation="vertical" className="h-6" />
             <span className="text-zinc-500">
-              Team <span className="font-medium text-zinc-900">{project.team}</span>
+              Team{" "}
+              <span className="font-medium text-zinc-900">
+                {project.team}
+              </span>
             </span>
           </div>
 
           <div>
-            <p className="text-base leading-relaxed text-zinc-600">{project.summary}</p>
+            <p className="text-base leading-relaxed text-zinc-600">
+              {project.summary}
+            </p>
           </div>
 
           {projectMedia && projectMedia.length > 0 && (
