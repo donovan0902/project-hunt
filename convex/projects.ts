@@ -10,12 +10,25 @@ import type { EntryId } from "@convex-dev/rag";
 import { userByExternalId } from "./users";
 import { hybridRank } from "@convex-dev/rag";
 
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
 export const create = action({
   args: {
     name: v.string(),
     summary: v.string(),
     team: v.string(),
     headline: v.optional(v.string()),
+    mediaFiles: v.optional(v.array(v.id("_storage"))),
+    link: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{
     projectId: Id<"projects">;
@@ -83,6 +96,8 @@ export const createProject = internalMutation({
     status: v.union(v.literal("pending"), v.literal("active")),
     userId: v.string(),
     headline: v.optional(v.string()),
+    mediaFiles: v.optional(v.array(v.id("_storage"))),
+    link: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("projects", {
@@ -93,6 +108,8 @@ export const createProject = internalMutation({
       status: args.status,
       userId: args.userId,
       headline: args.headline,
+      mediaFiles: args.mediaFiles,
+      link: args.link,
     });
   },
 });
@@ -224,6 +241,8 @@ export const updateProjectFields = internalMutation({
     summary: v.string(),
     team: v.string(),
     headline: v.optional(v.string()),
+    mediaFiles: v.optional(v.array(v.id("_storage"))),
+    link: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.projectId, {
@@ -231,6 +250,8 @@ export const updateProjectFields = internalMutation({
       summary: args.summary,
       team: args.team,
       headline: args.headline,
+      mediaFiles: args.mediaFiles,
+      link: args.link,
     });
   },
 });
@@ -242,6 +263,8 @@ export const updateProject = action({
     summary: v.string(),
     team: v.string(),
     headline: v.optional(v.string()),
+    mediaFiles: v.optional(v.array(v.id("_storage"))),
+    link: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -267,6 +290,8 @@ export const updateProject = action({
       summary: args.summary,
       team: args.team,
       headline: args.headline,
+      mediaFiles: args.mediaFiles,
+      link: args.link,
     });
 
     // Update the RAG index

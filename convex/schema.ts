@@ -12,6 +12,8 @@ export default defineSchema({
     userId: v.string(),
     headline: v.optional(v.string()),
     allFields: v.optional(v.string()),
+    mediaFiles: v.optional(v.array(v.id("_storage"))),
+    link: v.optional(v.string()),
   })
     .searchIndex("allFields", { searchField: "allFields" })
     .index("by_entryId", ["entryId"])
