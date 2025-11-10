@@ -49,8 +49,9 @@ export function SimilarProjectsPreview({
   useEffect(() => {
     const performSearch = async () => {
       // Don't search if inputs are too short
-      if (debouncedInputs.name.trim().length < 2 && debouncedInputs.description.trim().length < 2) {
+      if (debouncedInputs.name.trim().length < 2 || debouncedInputs.description.trim().length < 200) {
         setResults([]);
+        setIsLoading(false);
         return;
       }
 
@@ -73,24 +74,23 @@ export function SimilarProjectsPreview({
     performSearch();
   }, [debouncedInputs, searchSimilarProjects]);
 
-  // Don't show anything if inputs are too short
-  if (name.trim().length < 2 && description.trim().length < 2) {
-    return null;
-  }
+  const inputsTooShort = name.trim().length < 2 || description.trim().length < 200;
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-lg font-semibold text-zinc-900">Similar projects</h3>
-      </div>
+    <div className="space-y-3">
+      <h3 className="text-lg font-semibold text-zinc-900">Similar projects</h3>
 
-      <div className="space-y-3">
-        {isLoading ? (
+      <div className="space-y-4">
+        {inputsTooShort ? (
+          <p className="text-sm text-zinc-500">
+            Start typing to see similar projects.
+          </p>
+        ) : isLoading ? (
           <>
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="rounded-lg border border-zinc-200 bg-white p-4">
-                <Skeleton className="h-5 w-3/4 mb-2" />
-                <Skeleton className="h-4 w-full mb-2" />
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-1/2" />
               </div>
             ))}
@@ -102,22 +102,22 @@ export function SimilarProjectsPreview({
                 key={project._id}
                 href={`/project/${project._id}`}
                 target="_blank"
-                className="block rounded-lg border border-zinc-200 bg-white p-4 hover:border-zinc-300 hover:shadow-sm transition-all"
+                className="block space-y-2 transition-colors hover:text-zinc-900"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
                       <h4 className="font-medium text-zinc-900 truncate">
                         {project.name}
                       </h4>
                       <ArrowUpRight className="h-4 w-4 text-zinc-400 flex-shrink-0" />
                     </div>
                     {project.headline && (
-                      <p className="text-sm text-zinc-600 mb-2 line-clamp-1">
+                      <p className="text-sm text-zinc-600 line-clamp-1">
                         {project.headline}
                       </p>
                     )}
-                    <p className="text-sm text-zinc-500 line-clamp-2 mb-2">
+                    <p className="text-sm text-zinc-500 line-clamp-2">
                       {project.summary}
                     </p>
                     <div className="flex items-center gap-3 text-xs text-zinc-500">
@@ -131,11 +131,9 @@ export function SimilarProjectsPreview({
             ))}
           </>
         ) : (
-          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-8 text-center">
-            <p className="text-sm text-zinc-500">
-              No similar projects found. Your idea looks unique!
-            </p>
-          </div>
+          <p className="text-sm text-zinc-500">
+            No similar projects found.
+          </p>
         )}
       </div>
     </div>
