@@ -86,6 +86,7 @@ export default function Home() {
           <div className="space-y-6">
             <div>
               <h2 className="text-3xl font-semibold tracking-tight">Who is working on what</h2>
+              <p className="mt-2 text-lg text-zinc-600">This week&apos;s most popular projects</p>
             </div>
             <div className="space-y-0">
               {!projects ? (
