@@ -7,7 +7,16 @@ const triggers = new Triggers<DataModel>();
 
 triggers.register("projects", async (ctx, change) => {
   if (change.newDoc) {
-    const allFields = change.newDoc.name + " " + change.newDoc.summary + " " + change.newDoc.team + " " + change.newDoc.headline;
+    // Get team name if teamId exists
+    let teamName = "";
+    if (change.newDoc.teamId) {
+      const team = await ctx.db.get(change.newDoc.teamId);
+      teamName = team?.name ?? "";
+    }
+    
+    const headline = change.newDoc.headline ?? "";
+    const allFields = `${change.newDoc.name} ${change.newDoc.summary} ${teamName} ${headline}`.trim();
+    
     if (change.newDoc.allFields !== allFields) {
       await ctx.db.patch(change.id, { allFields });
     }

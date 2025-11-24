@@ -21,7 +21,7 @@ type Project = {
   name: string;
   summary: string;
   headline?: string;
-  team: string;
+  team?: string;
   upvotes: number;
   commentCount: number;
   hasUpvoted: boolean;
@@ -65,7 +65,7 @@ export default function Home() {
         project.name.toLowerCase().includes(q) ||
         project.summary.toLowerCase().includes(q) ||
         (project.headline && project.headline.toLowerCase().includes(q)) ||
-        project.team.toLowerCase().includes(q) ||
+        (project.team && project.team.toLowerCase().includes(q)) ||
         project.creatorName.toLowerCase().includes(q)
       );
     });
