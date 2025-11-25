@@ -74,6 +74,7 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
   const generateUploadUrl = useMutation(api.projects.generateUploadUrl);
   const deleteMediaFromProject = useMutation(api.projects.deleteMediaFromProject);
   const addMediaToProject = useMutation(api.projects.addMediaToProject);
+  const focusAreasGrouped = useQuery(api.focusAreas.listActiveGrouped);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -85,6 +86,7 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedFocusAreas, setSelectedFocusAreas] = useState<Id<"focusAreas">[]>([]);
 
   const { getRootProps, getInputProps, fileRejections, isDragActive } = useDropzone({
     accept: {
@@ -123,6 +125,7 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
         team: project.team,
         link: project.link || "",
       });
+      setSelectedFocusAreas(project.focusAreaIds || []);
       setIsLoading(false);
     }
   }, [project]);
@@ -137,9 +140,9 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
         projectId,
         name: formData.name,
         summary: formData.description,
-        team: formData.team,
         headline: formData.headline || undefined,
         link: formData.link || undefined,
+        focusAreaIds: selectedFocusAreas.length > 0 ? selectedFocusAreas : undefined,
       });
 
       // Upload and add new media files if any are selected
@@ -278,6 +281,46 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
                 onChange={(e) => setFormData({ ...formData, link: e.target.value })}
                 placeholder="https://example.com"
               />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-900">
+                Focus Areas <span className="text-xs text-zinc-500">(optional)</span>
+              </label>
+
+              {!focusAreasGrouped ? (
+                <div className="text-sm text-zinc-500">Loading focus areas...</div>
+              ) : (
+                <div className="space-y-4 rounded-lg border border-zinc-200 bg-white p-4">
+                  {Object.entries(focusAreasGrouped).map(([group, areas]) => (
+                    <div key={group}>
+                      <div className="mb-2 text-sm font-medium text-zinc-700">{group}</div>
+                      <div className="space-y-2">
+                        {areas.map((fa) => (
+                          <label key={fa._id} className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={selectedFocusAreas.includes(fa._id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedFocusAreas([...selectedFocusAreas, fa._id]);
+                                } else {
+                                  setSelectedFocusAreas(selectedFocusAreas.filter(id => id !== fa._id));
+                                }
+                              }}
+                              className="h-4 w-4 rounded border-zinc-300"
+                            />
+                            <span>{fa.name}</span>
+                            {fa.description && (
+                              <span className="text-xs text-zinc-500">— {fa.description}</span>
+                            )}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

@@ -13,6 +13,7 @@ export default defineSchema({
     headline: v.optional(v.string()),
     allFields: v.optional(v.string()),
     link: v.optional(v.string()),
+    focusAreaIds: v.optional(v.array(v.id("focusAreas"))),
   })
     .searchIndex("allFields", { searchField: "allFields" })
     .index("by_entryId", ["entryId"])
@@ -69,4 +70,13 @@ export default defineSchema({
     description: v.optional(v.string()),
     createdAt: v.number(),
   }),
+  focusAreas: defineTable({
+    name: v.string(),
+    group: v.string(),
+    description: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_isActive", ["isActive"])
+    .index("by_group", ["group"]),
 });

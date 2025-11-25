@@ -29,27 +29,27 @@ type Project = {
   creatorAvatar: string;
 };
 
-const FORUMS = [
-  {
-    title: "AI fails",
-    summary: "Dumb things AI does",
-    threads: 7,
-    lastPost: "9:20 AM",
-  },
-  {
-    title: "AI tips & tricks",
-    summary: "Want to 10x your productivity? Learn how here",
-    threads: 12,
-    lastPost: "Yesterday",
-  },
-  {
-    title: "Launch blockers",
-    summary: "Escalations that need cross-team eyes this week.",
-    threads: 5,
-    lastPost: "45 min ago",
-  },
-];
+type NewestProject = {
+  _id: Id<"projects">;
+  name: string;
+  headline?: string;
+  team: string;
+  upvotes: number;
+  creatorName: string;
+  creatorAvatar: string;
+  _creationTime: number;
+};
 
+function getRelativeTime(timestamp: number): string {
+  const now = Date.now();
+  const diffInSeconds = Math.floor((now - timestamp) / 1000);
+
+  if (diffInSeconds < 60) return "just now";
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  return `${Math.floor(diffInSeconds / 604800)}w ago`;
+}
 
 export default function Home() {
   const [query, setQuery] = useState("");
@@ -85,7 +85,10 @@ export default function Home() {
         <section className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_280px]">
           <div className="space-y-6">
             <div>
-              <h2 className="text-3xl font-semibold tracking-tight">Who is working on what</h2>
+              <h2 className="text-3xl font-semibold tracking-tight flex items-center gap-3">
+                What people at Honda are building
+                <Badge className="text-xs font-medium">For you</Badge>
+              </h2>
               <p className="mt-2 text-lg text-zinc-600">This week&apos;s most popular projects</p>
             </div>
             <div className="space-y-0">
@@ -107,7 +110,7 @@ export default function Home() {
             </div>
           </div>
 
-          <Forums />
+          <NewestProjects />
         </section>
       </main>
     </div>
@@ -140,7 +143,7 @@ function ProjectRow({
 
   return (
     <div
-      className="grid gap-4 pb-6 pt-6 cursor-pointer hover:bg-zinc-100 rounded-lg transition-colors px-4 -mx-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+      className="grid gap-4 pb-4 pt-4 cursor-pointer hover:bg-zinc-100 rounded-lg transition-colors px-4 -mx-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
       onClick={handleProjectClick}
     >
       <div className="min-w-0 space-y-4">
@@ -172,29 +175,31 @@ function ProjectRow({
         <Button
           variant="outline"
           onClick={handleCommentClick}
-          className="flex items-center gap-1 rounded-full border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-600 hover:text-zinc-900"
+          className="flex min-h-[3.25rem] min-w-[4rem] flex-col items-center justify-center gap-1 rounded-2xl border-zinc-200 px-3 py-3 text-sm font-semibold text-zinc-600 hover:text-zinc-900 leading-tight"
           aria-label={`View ${project.commentCount} comments`}
         >
           <MessageCircle className="h-4 w-4" aria-hidden="true" />
-          <span>{project.commentCount}</span>
+          <span className="text-sm font-semibold text-zinc-900">{project.commentCount}</span>
         </Button>
         <div>
           {isAuthenticated ? (
             <Button
               variant={project.hasUpvoted ? "default" : "outline"}
               onClick={handleUpvoteClick}
-              className="rounded-full px-4 py-2 text-sm font-semibold"
+              className="flex min-h-[3.25rem] min-w-[4rem] flex-col items-center justify-center gap-1 rounded-2xl px-3 py-3 text-sm font-semibold leading-tight"
             >
-              ↑ {project.upvotes}
+              <span aria-hidden="true">↑</span>
+              <span className="text-sm font-semibold text-zinc-900">{project.upvotes}</span>
             </Button>
           ) : (
             <SignInButton mode="modal">
               <Button
                 variant="outline"
                 onClick={(e) => e.stopPropagation()}
-                className="rounded-full border-zinc-200 px-4 py-2 text-sm font-semibold"
+                className="flex min-h-[3.25rem] min-w-[4rem] flex-col items-center justify-center gap-1 rounded-2xl border-zinc-200 px-3 py-3 text-sm font-semibold leading-tight"
               >
-                ↑ {project.upvotes}
+                <span aria-hidden="true">↑</span>
+                <span className="text-sm font-semibold text-zinc-900">{project.upvotes}</span>
               </Button>
             </SignInButton>
           )}
@@ -212,23 +217,82 @@ function EmptyState() {
   );
 }
 
-function Forums() {
+function NewestProjectCard({ project }: { project: NewestProject }) {
+  const router = useRouter();
+
+  const handleClick = () => {
+    router.push(`/project/${project._id}`);
+  };
+
+  return (
+    <div
+      className="cursor-pointer space-y-2 rounded-lg p-3 transition-colors hover:bg-zinc-100"
+      onClick={handleClick}
+    >
+      {/* Project Name */}
+      <div className="flex items-center gap-2">
+        <h4 className="font-semibold text-zinc-900 text-sm leading-tight line-clamp-2 flex-1">
+          {project.name}
+        </h4>
+        <span className="text-xs text-zinc-500 whitespace-nowrap">
+          {getRelativeTime(project._creationTime)}
+        </span>
+      </div>
+
+      {/* Headline (if available) */}
+      {project.headline && (
+        <p className="text-xs text-zinc-600 line-clamp-2">
+          {project.headline}
+        </p>
+      )}
+
+      {/* Metadata: Team, Upvotes */}
+      <div className="flex items-center gap-2 text-xs text-zinc-500">
+        {project.team && (
+          <>
+            <span className="font-medium text-zinc-700">{project.team}</span>
+            <span>•</span>
+          </>
+        )}
+        <span className="flex items-center gap-1">
+          <span>↑</span>
+          <span>{project.upvotes}</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function NewestProjects() {
+  const newestProjects = useQuery(api.projects.getNewestProjects, { limit: 5 });
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
-        <h3 className="text-2xl font-semibold text-zinc-900">Discussion threads</h3>
-        <Badge variant="outline" className="text-xs">
-          Coming soon
-        </Badge>
+        <h3 className="text-2xl font-semibold text-zinc-900">Newest projects</h3>
       </div>
-      <div className="flex flex-col divide-y divide-zinc-200 border-t border-zinc-200">
-        {FORUMS.map((forum) => (
-          <div key={forum.title} className="py-4">
-            <p className="text-base font-semibold text-zinc-900">h/{forum.title}</p>
-            <p className="text-sm text-zinc-500">{forum.summary}</p>
-          </div>
-        ))}
-      </div>
+
+      {!newestProjects ? (
+        // Loading state
+        <div className="space-y-3">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="animate-pulse space-y-2">
+              <div className="h-4 bg-zinc-200 rounded w-3/4"></div>
+              <div className="h-3 bg-zinc-200 rounded w-full"></div>
+            </div>
+          ))}
+        </div>
+      ) : newestProjects.length === 0 ? (
+        // Empty state
+        <p className="text-sm text-zinc-500">No projects yet.</p>
+      ) : (
+        // Projects list
+        <div className="flex flex-col gap-3">
+          {newestProjects.map((project) => (
+            <NewestProjectCard key={project._id} project={project} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -128,6 +128,7 @@ export const create = action({
     summary: v.string(),
     headline: v.optional(v.string()),
     link: v.optional(v.string()),
+    focusAreaIds: v.optional(v.array(v.id("focusAreas"))),
   },
   handler: async (ctx, args): Promise<{
     projectId: Id<"projects">;
@@ -150,7 +151,15 @@ export const create = action({
     // Create project as "pending"
     const projectId: Id<"projects"> = await ctx.runMutation(
       internal.projects.createProject,
-      { ...args, status: "pending" as const, userId }
+      {
+        name: args.name,
+        summary: args.summary,
+        headline: args.headline,
+        link: args.link,
+        focusAreaIds: args.focusAreaIds,
+        status: "pending" as const,
+        userId
+      }
     );
 
     // Embed the project content
@@ -204,6 +213,7 @@ export const createProject = internalMutation({
     userId: v.string(),
     headline: v.optional(v.string()),
     link: v.optional(v.string()),
+    focusAreaIds: v.optional(v.array(v.id("focusAreas"))),
   },
   handler: async (ctx, args) => {
     let teamId: Id<"teams"> | undefined = undefined;
@@ -222,6 +232,7 @@ export const createProject = internalMutation({
       userId: args.userId,
       headline: args.headline,
       link: args.link,
+      focusAreaIds: args.focusAreaIds,
     });
   },
 });
@@ -363,6 +374,7 @@ export const updateProjectFields = internalMutation({
     summary: v.string(),
     headline: v.optional(v.string()),
     link: v.optional(v.string()),
+    focusAreaIds: v.optional(v.array(v.id("focusAreas"))),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.projectId, {
@@ -370,6 +382,7 @@ export const updateProjectFields = internalMutation({
       summary: args.summary,
       headline: args.headline,
       link: args.link,
+      focusAreaIds: args.focusAreaIds,
     });
   },
 });
@@ -381,6 +394,7 @@ export const updateProject = action({
     summary: v.string(),
     headline: v.optional(v.string()),
     link: v.optional(v.string()),
+    focusAreaIds: v.optional(v.array(v.id("focusAreas"))),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -406,6 +420,7 @@ export const updateProject = action({
       summary: args.summary,
       headline: args.headline,
       link: args.link,
+      focusAreaIds: args.focusAreaIds,
     });
 
     // Update the RAG index
@@ -596,6 +611,59 @@ export const getUserProjects = query({
 
     // Sort by creation time descending (newest first)
     return projectsWithUpvotes.sort((a, b) => b._creationTime - a._creationTime);
+  },
+});
+
+// Public query: Fetch the newest active projects for sidebar display
+// Returns minimal enriched data sorted by creation time descending
+export const getNewestProjects = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 5;
+
+    // Query active projects sorted by creation time (newest first)
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .order("desc")
+      .take(limit);
+
+    // Enrich with minimal data for sidebar display
+    const projectsWithBasicInfo = await Promise.all(
+      projects.map(async (project) => {
+        // Get upvote count
+        const upvotes = await ctx.db
+          .query("upvotes")
+          .withIndex("by_project", (q) => q.eq("projectId", project._id))
+          .collect();
+
+        // Get creator info
+        const creator = await userByExternalId(ctx, project.userId);
+
+        // Get team name
+        let teamName = "";
+        if (project.teamId) {
+          const team = await ctx.db.get(project.teamId);
+          teamName = team?.name ?? "";
+        }
+
+        return {
+          _id: project._id,
+          name: project.name,
+          headline: project.headline,
+          team: teamName,
+          upvotes: upvotes.length,
+          creatorName: creator?.name ?? "Unknown User",
+          creatorAvatar: creator?.avatarUrlId ?? "",
+          _creationTime: project._creationTime,
+        };
+      })
+    );
+
+    // Return already sorted by _creationTime (from .order("desc"))
+    return projectsWithBasicInfo;
   },
 });
 
