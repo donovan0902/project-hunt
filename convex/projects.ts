@@ -128,7 +128,7 @@ export const create = action({
     summary: v.string(),
     headline: v.optional(v.string()),
     link: v.optional(v.string()),
-    focusAreaIds: v.optional(v.array(v.id("focusAreas"))),
+    focusAreaIds: v.array(v.id("focusAreas")),
   },
   handler: async (ctx, args): Promise<{
     projectId: Id<"projects">;
@@ -213,7 +213,7 @@ export const createProject = internalMutation({
     userId: v.string(),
     headline: v.optional(v.string()),
     link: v.optional(v.string()),
-    focusAreaIds: v.optional(v.array(v.id("focusAreas"))),
+    focusAreaIds: v.array(v.id("focusAreas")),
   },
   handler: async (ctx, args) => {
     let teamId: Id<"teams"> | undefined = undefined;
@@ -374,7 +374,7 @@ export const updateProjectFields = internalMutation({
     summary: v.string(),
     headline: v.optional(v.string()),
     link: v.optional(v.string()),
-    focusAreaIds: v.optional(v.array(v.id("focusAreas"))),
+    focusAreaIds: v.array(v.id("focusAreas")),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.projectId, {
@@ -394,7 +394,7 @@ export const updateProject = action({
     summary: v.string(),
     headline: v.optional(v.string()),
     link: v.optional(v.string()),
-    focusAreaIds: v.optional(v.array(v.id("focusAreas"))),
+    focusAreaIds: v.array(v.id("focusAreas")),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();

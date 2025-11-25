@@ -13,7 +13,7 @@ export default defineSchema({
     headline: v.optional(v.string()),
     allFields: v.optional(v.string()),
     link: v.optional(v.string()),
-    focusAreaIds: v.optional(v.array(v.id("focusAreas"))),
+    focusAreaIds: v.array(v.id("focusAreas")),
   })
     .searchIndex("allFields", { searchField: "allFields" })
     .index("by_entryId", ["entryId"])

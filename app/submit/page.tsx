@@ -62,7 +62,7 @@ export default function SubmitProject() {
         summary: formData.description,
         headline: formData.headline || undefined,
         link: formData.link || undefined,
-        focusAreaIds: selectedFocusAreas.length > 0 ? selectedFocusAreas : undefined,
+        focusAreaIds: selectedFocusAreas,
       });
 
       // Upload and add media files if any are selected

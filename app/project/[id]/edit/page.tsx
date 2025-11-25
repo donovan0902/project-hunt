@@ -124,7 +124,7 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
         description: project.summary,
         link: project.link || "",
       });
-      setSelectedFocusAreas(project.focusAreaIds || []);
+      setSelectedFocusAreas(project.focusAreaIds);
       setIsLoading(false);
     }
   }, [project]);
@@ -141,7 +141,7 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
         summary: formData.description,
         headline: formData.headline || undefined,
         link: formData.link || undefined,
-        focusAreaIds: selectedFocusAreas.length > 0 ? selectedFocusAreas : undefined,
+        focusAreaIds: selectedFocusAreas,
       });
 
       // Upload and add new media files if any are selected
@@ -210,10 +210,7 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
 
         <section className="mx-auto w-full max-w-2xl">
           <div className="mb-6">
-            <h2 className="text-3xl font-semibold tracking-tight">Edit project</h2>
-            <p className="mt-2 text-sm text-zinc-500">
-              Update your project details
-            </p>
+            <h2 className="text-3xl font-semibold tracking-tight">Update your project details</h2>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -319,13 +316,10 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
                     {isDragActive ? (
                       <span className="font-medium text-zinc-900">Drop files here</span>
                     ) : (
-                      <>
-                        <span className="font-medium text-zinc-900">Click to upload</span> or drag and drop
-                      </>
+                      <span className="text-zinc-500">
+                        Include media that helps viewers understand what your project is, what it does, and how it works.
+                      </span>
                     )}
-                  </div>
-                  <div className="text-xs text-zinc-500">
-                    Images (PNG, JPG, GIF, WebP) or Videos (MP4, WebM)
                   </div>
                 </div>
               </div>
@@ -340,8 +334,8 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
               {/* New Files to Upload */}
               {selectedFiles.length > 0 && (
                 <div className="mt-4 space-y-2">
-                  <div className="text-sm font-medium text-zinc-700">
-                    New files to add ({selectedFiles.length})
+                  <div className="text-sm font-medium text-zinc-900">
+                    Selected files ({selectedFiles.length})
                   </div>
                   <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
                     {selectedFiles.map((file, index) => (
