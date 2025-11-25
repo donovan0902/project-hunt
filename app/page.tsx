@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
@@ -99,8 +99,9 @@ export default function Home() {
                 What people at Honda are building
                 <Badge className="text-xs font-medium">For you</Badge>
               </h2>
-              <p className="mt-2 text-lg text-zinc-600">This week&apos;s most popular projects</p>
+              <p className="mt-2 text-lg text-zinc-600">This week&apos;s most popular projects, based on your interests</p>
             </div>
+            <ShareProjectCallout />
             <div className="space-y-0">
               {!projects ? (
                 <div className="py-8 text-center text-sm text-zinc-500">
@@ -123,6 +124,39 @@ export default function Home() {
           <NewestProjects />
         </section>
       </main>
+    </div>
+  );
+}
+
+function ShareProjectCallout() {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-white/90 px-4 py-3 shadow-sm">
+      <div className="space-y-1">
+        <p className="text-sm text-zinc-600">
+          Have something cool to share? Post a project so others can follow along.
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        <Authenticated>
+          <Link href="/submit">
+            <Button size="sm" className="whitespace-nowrap">
+              Submit a project
+            </Button>
+          </Link>
+        </Authenticated>
+        <Unauthenticated>
+          <SignInButton mode="modal">
+            <Button size="sm" className="whitespace-nowrap">
+              Submit a project
+            </Button>
+          </SignInButton>
+        </Unauthenticated>
+        <AuthLoading>
+          <Button size="sm" className="whitespace-nowrap" disabled>
+            Submit a project
+          </Button>
+        </AuthLoading>
+      </div>
     </div>
   );
 }
