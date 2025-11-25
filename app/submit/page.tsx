@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useDropzone } from "react-dropzone";
 import { Upload } from "lucide-react";
 import { SimilarProjectsPreview } from "@/components/SimilarProjectsPreview";
+import { FocusAreaPicker } from "@/components/FocusAreaPicker";
 
 export default function SubmitProject() {
   const router = useRouter();
@@ -185,40 +186,11 @@ export default function SubmitProject() {
               <label className="text-sm font-medium text-zinc-900">
                 Focus Areas <span className="text-xs text-zinc-500">(optional)</span>
               </label>
-
-              {!focusAreasGrouped ? (
-                <div className="text-sm text-zinc-500">Loading focus areas...</div>
-              ) : (
-                <div className="space-y-4 rounded-lg border border-zinc-200 bg-white p-4">
-                  {Object.entries(focusAreasGrouped).map(([group, areas]) => (
-                    <div key={group}>
-                      <div className="mb-2 text-sm font-medium text-zinc-700">{group}</div>
-                      <div className="space-y-2">
-                        {areas.map((fa) => (
-                          <label key={fa._id} className="flex items-center gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={selectedFocusAreas.includes(fa._id)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedFocusAreas([...selectedFocusAreas, fa._id]);
-                                } else {
-                                  setSelectedFocusAreas(selectedFocusAreas.filter(id => id !== fa._id));
-                                }
-                              }}
-                              className="h-4 w-4 rounded border-zinc-300"
-                            />
-                            <span>{fa.name}</span>
-                            {fa.description && (
-                              <span className="text-xs text-zinc-500">— {fa.description}</span>
-                            )}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <FocusAreaPicker
+                focusAreasGrouped={focusAreasGrouped}
+                selectedFocusAreas={selectedFocusAreas}
+                onSelectionChange={setSelectedFocusAreas}
+              />
             </div>
 
             <div className="space-y-2">
