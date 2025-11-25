@@ -8,13 +8,18 @@ import { Id } from "@/convex/_generated/dataModel";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { SignInButton } from "@clerk/nextjs";
 import { MessageCircle } from "lucide-react";
+import { FocusAreaBadges } from "@/components/FocusAreaBadges";
 
+type FocusArea = {
+  _id: Id<"focusAreas">;
+  name: string;
+  group: string;
+};
 
 type Project = {
   _id: Id<"projects">;
@@ -27,6 +32,7 @@ type Project = {
   hasUpvoted: boolean;
   creatorName: string;
   creatorAvatar: string;
+  focusAreas: FocusArea[];
 };
 
 type NewestProject = {
@@ -66,7 +72,11 @@ export default function Home() {
         project.summary.toLowerCase().includes(q) ||
         (project.headline && project.headline.toLowerCase().includes(q)) ||
         (project.team && project.team.toLowerCase().includes(q)) ||
-        project.creatorName.toLowerCase().includes(q)
+        project.creatorName.toLowerCase().includes(q) ||
+        project.focusAreas.some((area) =>
+          area.name.toLowerCase().includes(q) ||
+          area.group.toLowerCase().includes(q)
+        )
       );
     });
   }, [query, projects]);
@@ -143,10 +153,10 @@ function ProjectRow({
 
   return (
     <div
-      className="grid gap-4 pb-4 pt-4 cursor-pointer hover:bg-zinc-100 rounded-lg transition-colors px-4 -mx-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+      className="grid gap-3 pb-4 pt-4 cursor-pointer hover:bg-zinc-100 rounded-lg transition-colors px-4 -mx-4 sm:grid-cols-[minmax(0,1fr)_auto]"
       onClick={handleProjectClick}
     >
-      <div className="min-w-0 space-y-4">
+      <div className="min-w-0 space-y-3">
         <div className="min-w-0">
           <h3 className="text-xl font-semibold text-zinc-900">{project.name}</h3>
           {project.headline && (
@@ -154,21 +164,6 @@ function ProjectRow({
               {project.headline}
             </p>
           )}
-        </div>
-        <div className="flex flex-wrap items-center gap-4 text-sm text-zinc-500">
-          <span className="flex items-center gap-2">
-            <Avatar className="h-9 w-9 bg-zinc-100 text-sm font-semibold text-zinc-600">
-              <AvatarImage src={project.creatorAvatar} alt={project.creatorName || "User"} />
-              <AvatarFallback>{(project.creatorName || "U").slice(0, 2).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <span>
-              By <span className="font-medium text-zinc-900">{project.creatorName || "Unknown User"}</span>
-            </span>
-          </span>
-          <Separator orientation="vertical" className="hidden h-6 lg:block" />
-          <span>
-            Team <span className="font-medium text-zinc-900">{project.team}</span>
-          </span>
         </div>
       </div>
       <div className="flex items-center justify-end gap-2">
@@ -204,6 +199,30 @@ function ProjectRow({
             </SignInButton>
           )}
         </div>
+      </div>
+      <div className="sm:col-span-2 flex flex-wrap items-center gap-3 text-sm text-zinc-500 sm:flex-nowrap">
+        <span className="flex items-center gap-2 whitespace-nowrap">
+          <Avatar className="h-9 w-9 bg-zinc-100 text-sm font-semibold text-zinc-600">
+            <AvatarImage src={project.creatorAvatar} alt={project.creatorName || "User"} />
+            <AvatarFallback>{(project.creatorName || "U").slice(0, 2).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <span>
+            By <span className="font-medium text-zinc-900">{project.creatorName || "Unknown User"}</span>
+          </span>
+        </span>
+        <span className="text-zinc-300">•</span>
+        <span className="whitespace-nowrap">
+          Team <span className="font-medium text-zinc-900">{project.team}</span>
+        </span>
+        {project.focusAreas.length > 0 && (
+          <>
+            <span className="text-zinc-300">•</span>
+            <FocusAreaBadges
+              focusAreas={project.focusAreas}
+              className="min-w-0 flex-1 text-xs"
+            />
+          </>
+        )}
       </div>
     </div>
   );

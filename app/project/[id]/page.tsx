@@ -8,7 +8,6 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { CommentForm } from "@/components/CommentForm";
 import { CommentThread } from "@/components/CommentThread";
@@ -19,6 +18,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import { FocusAreaBadges } from "@/components/FocusAreaBadges";
 
 function MediaCarousel({
   mediaFiles,
@@ -248,8 +248,8 @@ export default function ProjectPage({
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 text-base">
-            <span className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3 text-base sm:flex-nowrap">
+            <span className="flex items-center gap-2 whitespace-nowrap">
               <Avatar className="h-10 w-10 bg-zinc-100 text-sm font-semibold text-zinc-600">
                 <AvatarImage
                   src={project.creatorAvatar}
@@ -266,13 +266,22 @@ export default function ProjectPage({
                 </span>
               </span>
             </span>
-            <Separator orientation="vertical" className="h-6" />
-            <span className="text-zinc-500">
+            <span className="text-zinc-300">•</span>
+            <span className="text-zinc-500 whitespace-nowrap">
               Team{" "}
               <span className="font-medium text-zinc-900">
                 {project.team}
               </span>
             </span>
+            {project.focusAreas?.length ? (
+              <>
+                <span className="text-zinc-300">•</span>
+                <FocusAreaBadges
+                  focusAreas={project.focusAreas}
+                  className="min-w-0 flex-1 text-sm"
+                />
+              </>
+            ) : null}
           </div>
 
           <div>

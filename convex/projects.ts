@@ -513,6 +513,19 @@ export const list = query({
       .withIndex("by_status", (q) => q.eq("status", "active"))
       .collect();
 
+    // Preload all focus areas referenced by these projects for quick lookup
+    const focusAreaIds = Array.from(
+      new Set(projects.flatMap((project) => project.focusAreaIds))
+    );
+    const focusAreaDocs = await Promise.all(
+      focusAreaIds.map((id) => ctx.db.get(id))
+    );
+    const focusAreaMap = new Map(
+      focusAreaDocs
+        .filter((fa): fa is NonNullable<typeof fa> => fa !== null)
+        .map((fa) => [fa._id, fa])
+    );
+
     // Get current user identity
     const identity = await ctx.auth.getUserIdentity();
     const userId = identity?.subject;
@@ -547,6 +560,15 @@ export const list = query({
           const team = await ctx.db.get(project.teamId);
           teamName = team?.name ?? "";
         }
+
+        const focusAreas = project.focusAreaIds
+          .map((id) => focusAreaMap.get(id))
+          .filter((fa): fa is NonNullable<typeof fa> => fa !== undefined)
+          .map((fa) => ({
+            _id: fa._id,
+            name: fa.name,
+            group: fa.group,
+          }));
         
         return {
           ...project,
@@ -556,6 +578,7 @@ export const list = query({
           hasUpvoted,
           creatorName: creator?.name ?? "Unknown User",
           creatorAvatar: creator?.avatarUrlId ?? "",
+          focusAreas,
         };
       })
     );
@@ -708,6 +731,17 @@ export const getById = query({
       teamName = team?.name ?? "";
     }
 
+    const focusAreaDocs = await Promise.all(
+      project.focusAreaIds.map((id) => ctx.db.get(id))
+    );
+    const focusAreas = focusAreaDocs
+      .filter((fa): fa is NonNullable<typeof fa> => fa !== null)
+      .map((fa) => ({
+        _id: fa._id,
+        name: fa.name,
+        group: fa.group,
+      }));
+
     return {
       ...project,
       team: teamName,
@@ -715,6 +749,7 @@ export const getById = query({
       hasUpvoted,
       creatorName: creator?.name ?? "Unknown User",
       creatorAvatar: creator?.avatarUrlId ?? "",
+      focusAreas,
     };
   },
 });
