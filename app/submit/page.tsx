@@ -184,7 +184,7 @@ export default function SubmitProject() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-zinc-900">
-                Focus Areas <span className="text-xs text-zinc-500">(optional)</span>
+                Focus Areas
               </label>
               <FocusAreaPicker
                 focusAreasGrouped={focusAreasGrouped}
