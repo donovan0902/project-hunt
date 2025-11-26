@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SignInButton, useUser } from "@clerk/nextjs";
@@ -229,22 +230,26 @@ export default function ProjectPage({
               )}
             </div>
             {isAuthenticated ? (
-              <Button
-                variant={project.hasUpvoted ? "default" : "outline"}
-                onClick={handleUpvote}
-                className="rounded-full px-6 py-3 text-base font-semibold"
-              >
-                ↑ {project.upvotes}
-              </Button>
-            ) : (
-              <SignInButton mode="modal">
+              <motion.div whileTap={{ scale: 1.15, rotate: -3 }} transition={{ type: "spring", stiffness: 800, damping: 20 }}>
                 <Button
-                  variant="outline"
-                  className="rounded-full border-zinc-200 px-6 py-3 text-base font-semibold"
+                  variant={project.hasUpvoted ? "default" : "outline"}
+                  onClick={handleUpvote}
+                  className={`rounded-full px-6 py-3 text-base font-semibold hover:ring-2 hover:ring-accent hover:ring-offset-2 transition-all ${project.hasUpvoted ? "!text-primary-foreground hover:!bg-primary hover:!text-primary-foreground" : "!text-foreground hover:!bg-background hover:!text-foreground"}`}
                 >
                   ↑ {project.upvotes}
                 </Button>
-              </SignInButton>
+              </motion.div>
+            ) : (
+              <motion.div whileTap={{ scale: 1.15, rotate: -3 }} transition={{ type: "spring", stiffness: 800, damping: 20 }}>
+                <SignInButton mode="modal">
+                  <Button
+                    variant="outline"
+                    className="rounded-full border-zinc-200 px-6 py-3 text-base font-semibold !text-foreground hover:!bg-background hover:!text-foreground hover:ring-2 hover:ring-accent hover:ring-offset-2 transition-all"
+                  >
+                    ↑ {project.upvotes}
+                  </Button>
+                </SignInButton>
+              </motion.div>
             )}
           </div>
 

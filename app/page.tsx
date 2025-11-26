@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { motion, LayoutGroup } from "motion/react";
 
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -102,23 +103,31 @@ export default function Home() {
               <p className="mt-2 text-lg text-zinc-600">This week&apos;s most popular projects, based on your interests</p>
             </div>
             <ShareProjectCallout />
-            <div className="space-y-0">
-              {!projects ? (
-                <div className="py-8 text-center text-sm text-zinc-500">
-                  Loading projects...
-                </div>
-              ) : filteredProjects.length ? (
-                filteredProjects.map((project) => (
-                  <ProjectRow
-                    key={project._id}
-                    project={project}
-                    onUpvote={handleUpvote}
-                  />
-                ))
-              ) : (
-                <EmptyState />
-              )}
-            </div>
+            <LayoutGroup>
+              <div className="space-y-0">
+                {!projects ? (
+                  <div className="py-8 text-center text-sm text-zinc-500">
+                    Loading projects...
+                  </div>
+                ) : filteredProjects.length ? (
+                  filteredProjects.map((project) => (
+                    <motion.div
+                      key={project._id}
+                      layout
+                      layoutId={project._id}
+                      transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                    >
+                      <ProjectRow
+                        project={project}
+                        onUpvote={handleUpvote}
+                      />
+                    </motion.div>
+                  ))
+                ) : (
+                  <EmptyState />
+                )}
+              </div>
+            </LayoutGroup>
           </div>
 
           <NewestProjects />
@@ -204,33 +213,37 @@ function ProjectRow({
         <Button
           variant="outline"
           onClick={handleCommentClick}
-          className="flex min-h-[3.25rem] min-w-[4rem] flex-col items-center justify-center gap-1 rounded-2xl border-zinc-200 px-3 py-3 text-sm font-semibold text-zinc-600 hover:text-zinc-900 leading-tight"
+          className="flex min-h-[3.25rem] min-w-[4rem] flex-col items-center justify-center gap-1 rounded-2xl border-zinc-200 px-3 py-3 text-sm font-semibold leading-tight hover:!bg-background hover:!text-foreground hover:ring-2 hover:ring-accent hover:ring-offset-2 transition-all"
           aria-label={`View ${project.commentCount} comments`}
         >
           <MessageCircle className="h-4 w-4" aria-hidden="true" />
-          <span className="text-sm font-semibold text-zinc-900">{project.commentCount}</span>
+          <span className="text-sm font-semibold">{project.commentCount}</span>
         </Button>
         <div>
           {isAuthenticated ? (
-            <Button
-              variant={project.hasUpvoted ? "default" : "outline"}
-              onClick={handleUpvoteClick}
-              className="flex min-h-[3.25rem] min-w-[4rem] flex-col items-center justify-center gap-1 rounded-2xl px-3 py-3 text-sm font-semibold leading-tight"
-            >
-              <span aria-hidden="true">↑</span>
-              <span className="text-sm font-semibold text-zinc-900">{project.upvotes}</span>
-            </Button>
-          ) : (
-            <SignInButton mode="modal">
+            <motion.div whileTap={{ scale: 1.15, rotate: -3 }} transition={{ type: "spring", stiffness: 800, damping: 20 }}>
               <Button
-                variant="outline"
-                onClick={(e) => e.stopPropagation()}
-                className="flex min-h-[3.25rem] min-w-[4rem] flex-col items-center justify-center gap-1 rounded-2xl border-zinc-200 px-3 py-3 text-sm font-semibold leading-tight"
+                variant={project.hasUpvoted ? "default" : "outline"}
+                onClick={handleUpvoteClick}
+                className={`flex min-h-[3.25rem] min-w-[4rem] flex-col items-center justify-center gap-1 rounded-2xl px-3 py-3 text-sm font-semibold leading-tight hover:ring-2 hover:ring-accent hover:ring-offset-2 transition-all ${project.hasUpvoted ? "hover:!bg-primary hover:!text-primary-foreground" : "hover:!bg-background hover:!text-foreground"}`}
               >
-                <span aria-hidden="true">↑</span>
-                <span className="text-sm font-semibold text-zinc-900">{project.upvotes}</span>
+                <span aria-hidden="true" className="text-inherit">↑</span>
+                <span className="text-sm font-semibold text-inherit">{project.upvotes}</span>
               </Button>
-            </SignInButton>
+            </motion.div>
+          ) : (
+            <motion.div whileTap={{ scale: 1.15, rotate: -3 }} transition={{ type: "spring", stiffness: 800, damping: 20 }}>
+              <SignInButton mode="modal">
+                <Button
+                  variant="outline"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex min-h-[3.25rem] min-w-[4rem] flex-col items-center justify-center gap-1 rounded-2xl border-zinc-200 px-3 py-3 text-sm font-semibold leading-tight hover:!bg-background hover:!text-foreground hover:ring-2 hover:ring-accent hover:ring-offset-2 transition-all"
+                >
+                  <span aria-hidden="true" className="text-inherit">↑</span>
+                  <span className="text-sm font-semibold text-inherit">{project.upvotes}</span>
+                </Button>
+              </SignInButton>
+            </motion.div>
           )}
         </div>
       </div>
