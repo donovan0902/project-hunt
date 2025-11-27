@@ -5,7 +5,7 @@ export default defineSchema({
   projects: defineTable({
     name: v.string(),
     summary: v.string(),
-    team: v.string(),
+    teamId: v.optional(v.id("teams")),
     upvotes: v.number(),
     entryId: v.optional(v.string()),
     status: v.union(v.literal("pending"), v.literal("active")),
@@ -13,11 +13,13 @@ export default defineSchema({
     headline: v.optional(v.string()),
     allFields: v.optional(v.string()),
     link: v.optional(v.string()),
+    focusAreaIds: v.array(v.id("focusAreas")),
   })
     .searchIndex("allFields", { searchField: "allFields" })
     .index("by_entryId", ["entryId"])
     .index("by_status", ["status"])
-    .index("by_userId", ["userId"]),
+    .index("by_userId", ["userId"])
+    .index("by_teamId", ["teamId"]),
   mediaFiles: defineTable({
     projectId: v.id("projects"),
     storageId: v.id("_storage"),
@@ -59,5 +61,22 @@ export default defineSchema({
     externalId: v.string(),
     avatarUrlId: v.string(),
     email: v.optional(v.string()),
-  }).index("byExternalId", ["externalId"]),
+    teamId: v.optional(v.id("teams")),
+  })
+    .index("byExternalId", ["externalId"])
+    .index("by_teamId", ["teamId"]),
+  teams: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    createdAt: v.number(),
+  }),
+  focusAreas: defineTable({
+    name: v.string(),
+    group: v.string(),
+    description: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_isActive", ["isActive"])
+    .index("by_group", ["group"]),
 });

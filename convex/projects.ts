@@ -126,9 +126,9 @@ export const create = action({
   args: {
     name: v.string(),
     summary: v.string(),
-    team: v.string(),
     headline: v.optional(v.string()),
     link: v.optional(v.string()),
+    focusAreaIds: v.array(v.id("focusAreas")),
   },
   handler: async (ctx, args): Promise<{
     projectId: Id<"projects">;
@@ -145,10 +145,21 @@ export const create = action({
     if (!identity) {
       throw new Error("Unauthorized");
     }
+
+    const userId = identity.subject;
+
     // Create project as "pending"
     const projectId: Id<"projects"> = await ctx.runMutation(
       internal.projects.createProject,
-      { ...args, status: "pending" as const, userId: identity.subject }
+      {
+        name: args.name,
+        summary: args.summary,
+        headline: args.headline,
+        link: args.link,
+        focusAreaIds: args.focusAreaIds,
+        status: "pending" as const,
+        userId
+      }
     );
 
     // Embed the project content
@@ -176,12 +187,18 @@ export const create = action({
     });
 
     // Get full project details for similar projects
-    const similarProjects = await ctx.runQuery(
+    const similarProjectsRaw = await ctx.runQuery(
       internal.projects.getProjectsByEntryIds,
       {
         entryIds: entries.map((e) => e.entryId),
         excludeProjectId: projectId,
       }
+    );
+
+    // Enrich with team name and upvotes
+    const similarProjects = await ctx.runQuery(
+      internal.projects.populateProjectDetails,
+      { projects: similarProjectsRaw }
     );
 
     return { projectId, similarProjects };
@@ -192,22 +209,30 @@ export const createProject = internalMutation({
   args: {
     name: v.string(),
     summary: v.string(),
-    team: v.string(),
     status: v.union(v.literal("pending"), v.literal("active")),
     userId: v.string(),
     headline: v.optional(v.string()),
     link: v.optional(v.string()),
+    focusAreaIds: v.array(v.id("focusAreas")),
   },
   handler: async (ctx, args) => {
+    let teamId: Id<"teams"> | undefined = undefined;
+
+    const user = await userByExternalId(ctx, args.userId);
+    if (user?.teamId) {
+      teamId = user.teamId;
+    }
+
     return await ctx.db.insert("projects", {
       name: args.name,
       summary: args.summary,
-      team: args.team,
+      teamId,
       upvotes: 0,
       status: args.status,
       userId: args.userId,
       headline: args.headline,
       link: args.link,
+      focusAreaIds: args.focusAreaIds,
     });
   },
 });
@@ -259,14 +284,14 @@ export const getProjectsByEntryIds = internalQuery({
   },
 });
 
-export const addUpvoteCounts = internalQuery({
+export const populateProjectDetails = internalQuery({
   args: {
     projects: v.array(
       v.object({
         _id: v.id("projects"),
         name: v.string(),
         summary: v.string(),
-        team: v.string(),
+        teamId: v.optional(v.id("teams")),
         upvotes: v.number(),
         entryId: v.optional(v.string()),
         status: v.union(v.literal("pending"), v.literal("active")),
@@ -289,11 +314,18 @@ export const addUpvoteCounts = internalQuery({
         // Get creator information
         const creator = await userByExternalId(ctx, project.userId);
 
+        // Get team information
+        let teamName = "";
+        if (project.teamId) {
+          const team = await ctx.db.get(project.teamId);
+          teamName = team?.name ?? "";
+        }
+
         return {
           _id: project._id,
           name: project.name,
           summary: project.summary,
-          team: project.team,
+          team: teamName,
           upvotes: upvotes.length,
           creatorName: creator?.name ?? "Unknown User",
           creatorAvatar: creator?.avatarUrlId ?? "",
@@ -340,17 +372,17 @@ export const updateProjectFields = internalMutation({
     projectId: v.id("projects"),
     name: v.string(),
     summary: v.string(),
-    team: v.string(),
     headline: v.optional(v.string()),
     link: v.optional(v.string()),
+    focusAreaIds: v.array(v.id("focusAreas")),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.projectId, {
       name: args.name,
       summary: args.summary,
-      team: args.team,
       headline: args.headline,
       link: args.link,
+      focusAreaIds: args.focusAreaIds,
     });
   },
 });
@@ -360,9 +392,9 @@ export const updateProject = action({
     projectId: v.id("projects"),
     name: v.string(),
     summary: v.string(),
-    team: v.string(),
     headline: v.optional(v.string()),
     link: v.optional(v.string()),
+    focusAreaIds: v.array(v.id("focusAreas")),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -386,9 +418,9 @@ export const updateProject = action({
       projectId: args.projectId,
       name: args.name,
       summary: args.summary,
-      team: args.team,
       headline: args.headline,
       link: args.link,
+      focusAreaIds: args.focusAreaIds,
     });
 
     // Update the RAG index
@@ -481,6 +513,19 @@ export const list = query({
       .withIndex("by_status", (q) => q.eq("status", "active"))
       .collect();
 
+    // Preload all focus areas referenced by these projects for quick lookup
+    const focusAreaIds = Array.from(
+      new Set(projects.flatMap((project) => project.focusAreaIds))
+    );
+    const focusAreaDocs = await Promise.all(
+      focusAreaIds.map((id) => ctx.db.get(id))
+    );
+    const focusAreaMap = new Map(
+      focusAreaDocs
+        .filter((fa): fa is NonNullable<typeof fa> => fa !== null)
+        .map((fa) => [fa._id, fa])
+    );
+
     // Get current user identity
     const identity = await ctx.auth.getUserIdentity();
     const userId = identity?.subject;
@@ -509,13 +554,31 @@ export const list = query({
         // Get creator information
         const creator = await userByExternalId(ctx, project.userId);
         
+        // Get team information
+        let teamName = "";
+        if (project.teamId) {
+          const team = await ctx.db.get(project.teamId);
+          teamName = team?.name ?? "";
+        }
+
+        const focusAreas = project.focusAreaIds
+          .map((id) => focusAreaMap.get(id))
+          .filter((fa): fa is NonNullable<typeof fa> => fa !== undefined)
+          .map((fa) => ({
+            _id: fa._id,
+            name: fa.name,
+            group: fa.group,
+          }));
+        
         return {
           ...project,
+          team: teamName,
           upvotes: upvotes.length,
           commentCount: comments.length,
           hasUpvoted,
           creatorName: creator?.name ?? "Unknown User",
           creatorAvatar: creator?.avatarUrlId ?? "",
+          focusAreas,
         };
       })
     );
@@ -552,8 +615,16 @@ export const getUserProjects = query({
         // Get creator information
         const creator = await userByExternalId(ctx, project.userId);
 
+        // Get team information
+        let teamName = "";
+        if (project.teamId) {
+          const team = await ctx.db.get(project.teamId);
+          teamName = team?.name ?? "";
+        }
+
         return {
           ...project,
+          team: teamName,
           upvotes: upvotes.length,
           creatorName: creator?.name ?? "Unknown User",
           creatorAvatar: creator?.avatarUrlId ?? "",
@@ -563,6 +634,59 @@ export const getUserProjects = query({
 
     // Sort by creation time descending (newest first)
     return projectsWithUpvotes.sort((a, b) => b._creationTime - a._creationTime);
+  },
+});
+
+// Public query: Fetch the newest active projects for sidebar display
+// Returns minimal enriched data sorted by creation time descending
+export const getNewestProjects = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 5;
+
+    // Query active projects sorted by creation time (newest first)
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .order("desc")
+      .take(limit);
+
+    // Enrich with minimal data for sidebar display
+    const projectsWithBasicInfo = await Promise.all(
+      projects.map(async (project) => {
+        // Get upvote count
+        const upvotes = await ctx.db
+          .query("upvotes")
+          .withIndex("by_project", (q) => q.eq("projectId", project._id))
+          .collect();
+
+        // Get creator info
+        const creator = await userByExternalId(ctx, project.userId);
+
+        // Get team name
+        let teamName = "";
+        if (project.teamId) {
+          const team = await ctx.db.get(project.teamId);
+          teamName = team?.name ?? "";
+        }
+
+        return {
+          _id: project._id,
+          name: project.name,
+          headline: project.headline,
+          team: teamName,
+          upvotes: upvotes.length,
+          creatorName: creator?.name ?? "Unknown User",
+          creatorAvatar: creator?.avatarUrlId ?? "",
+          _creationTime: project._creationTime,
+        };
+      })
+    );
+
+    // Return already sorted by _creationTime (from .order("desc"))
+    return projectsWithBasicInfo;
   },
 });
 
@@ -600,12 +724,32 @@ export const getById = query({
     // Get creator information
     const creator = await userByExternalId(ctx, project.userId);
 
+    // Get team information
+    let teamName = "";
+    if (project.teamId) {
+      const team = await ctx.db.get(project.teamId);
+      teamName = team?.name ?? "";
+    }
+
+    const focusAreaDocs = await Promise.all(
+      project.focusAreaIds.map((id) => ctx.db.get(id))
+    );
+    const focusAreas = focusAreaDocs
+      .filter((fa): fa is NonNullable<typeof fa> => fa !== null)
+      .map((fa) => ({
+        _id: fa._id,
+        name: fa.name,
+        group: fa.group,
+      }));
+
     return {
       ...project,
+      team: teamName,
       upvotes: upvotes.length,
       hasUpvoted,
       creatorName: creator?.name ?? "Unknown User",
       creatorAvatar: creator?.avatarUrlId ?? "",
+      focusAreas,
     };
   },
 });
@@ -731,7 +875,7 @@ export const getSimilarProjects = action({
 
     // Add computed upvote counts
     const projectsWithCounts = await ctx.runQuery(
-      internal.projects.addUpvoteCounts,
+      internal.projects.populateProjectDetails,
       { projects: similarProjects }
     );
 
@@ -787,7 +931,7 @@ export const searchSimilarProjectsByText = action({
 
     // Add computed upvote counts and creator info
     const projectsWithCounts = await ctx.runQuery(
-      internal.projects.addUpvoteCounts,
+      internal.projects.populateProjectDetails,
       { projects: similarProjects }
     );
 

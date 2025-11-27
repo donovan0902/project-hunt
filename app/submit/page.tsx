@@ -3,14 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { useMutation, useAction } from "convex/react";
+import { useMutation, useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useDropzone } from "react-dropzone";
 import { Upload } from "lucide-react";
 import { SimilarProjectsPreview } from "@/components/SimilarProjectsPreview";
+import { FocusAreaPicker } from "@/components/FocusAreaPicker";
 
 export default function SubmitProject() {
   const router = useRouter();
@@ -18,15 +20,16 @@ export default function SubmitProject() {
   const confirmProject = useMutation(api.projects.confirmProject);
   const generateUploadUrl = useMutation(api.projects.generateUploadUrl);
   const addMediaToProject = useMutation(api.projects.addMediaToProject);
+  const focusAreasGrouped = useQuery(api.focusAreas.listActiveGrouped);
   const [formData, setFormData] = useState({
     name: "",
     headline: "",
     description: "",
-    team: "",
     link: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedFocusAreas, setSelectedFocusAreas] = useState<Id<"focusAreas">[]>([]);
 
   const { getRootProps, getInputProps, fileRejections, isDragActive } = useDropzone({
     accept: {
@@ -50,14 +53,16 @@ export default function SubmitProject() {
     e.preventDefault();
     setIsSubmitting(true);
 
+    
+
     try {
       // Create project first
       const result = await createProject({
         name: formData.name,
         summary: formData.description,
-        team: formData.team,
         headline: formData.headline || undefined,
         link: formData.link || undefined,
+        focusAreaIds: selectedFocusAreas,
       });
 
       // Upload and add media files if any are selected
@@ -165,19 +170,6 @@ export default function SubmitProject() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="team" className="text-sm font-medium text-zinc-900">
-                Team
-              </label>
-              <Input
-                id="team"
-                value={formData.team}
-                onChange={(e) => setFormData({ ...formData, team: e.target.value })}
-                placeholder="Platform Ops"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
               <label htmlFor="link" className="text-sm font-medium text-zinc-900">
                 Link <span className="text-xs text-zinc-500">(optional)</span>
               </label>
@@ -187,6 +179,17 @@ export default function SubmitProject() {
                 value={formData.link}
                 onChange={(e) => setFormData({ ...formData, link: e.target.value })}
                 placeholder="https://example.com"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-900">
+                Focus Areas
+              </label>
+              <FocusAreaPicker
+                focusAreasGrouped={focusAreasGrouped}
+                selectedFocusAreas={selectedFocusAreas}
+                onSelectionChange={setSelectedFocusAreas}
               />
             </div>
 
@@ -209,13 +212,10 @@ export default function SubmitProject() {
                     {isDragActive ? (
                       <span className="font-medium text-zinc-900">Drop files here</span>
                     ) : (
-                      <>
-                        <span className="font-medium text-zinc-900">Click to upload</span> or drag and drop
-                      </>
+                      <span className="text-zinc-500">
+                        Include media that helps viewers understand what your project is, what it does, and how it works.
+                      </span>
                     )}
-                  </div>
-                  <div className="text-xs text-zinc-500">
-                    Images (PNG, JPG, GIF, WebP) or Videos (MP4, WebM)
                   </div>
                 </div>
               </div>
