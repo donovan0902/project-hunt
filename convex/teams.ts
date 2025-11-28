@@ -1,9 +1,25 @@
-import { action, query } from "./_generated/server";
+import { action, internalQuery, query } from "./_generated/server";
 import { internalMutation } from "./functions";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { userByExternalId } from "./users";
+import { getCurrentUserOrThrow } from "./users";
 import type { Id } from "./_generated/dataModel";
+
+// Internal query to get current user for use in actions
+export const getCurrentUserInternal = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+    return await ctx.db
+      .query("users")
+      .withIndex("by_tokenIdentifier", (q) => q.eq("tokenIdentifier", identity.subject))
+      .unique();
+  },
+});
+
 
 export const createTeam = action({
   args: {
@@ -24,7 +40,6 @@ export const createTeam = action({
 
     // Associate user with team
     await ctx.runMutation(internal.teams.associateUserWithTeam, {
-      clerkId: identity.subject,
       teamId,
     });
 
@@ -48,14 +63,10 @@ export const createTeamInternal = internalMutation({
 
 export const associateUserWithTeam = internalMutation({
   args: {
-    clerkId: v.string(),
     teamId: v.id("teams"),
   },
   handler: async (ctx, args) => {
-    const user = await userByExternalId(ctx, args.clerkId);
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await getCurrentUserOrThrow(ctx);
     await ctx.db.patch(user._id, { teamId: args.teamId });
   },
 });

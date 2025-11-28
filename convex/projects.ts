@@ -7,8 +7,23 @@ import { internal } from "./_generated/api";
 import { rag } from "./rag";
 import type { Id } from "./_generated/dataModel";
 import type { EntryId } from "@convex-dev/rag";
-import { userByExternalId } from "./users";
+import { getCurrentUserOrThrow, getCurrentUser } from "./users";
 import { hybridRank } from "@convex-dev/rag";
+
+// Internal query to get current user for use in actions
+export const getCurrentUserInternal = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+    return await ctx.db
+      .query("users")
+      .withIndex("by_tokenIdentifier", (q) => q.eq("tokenIdentifier", identity.subject))
+      .unique();
+  },
+});
 
 export const generateUploadUrl = mutation({
   args: {},
@@ -38,18 +53,14 @@ export const addMediaToProject = mutation({
     contentType: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
+    const user = await getCurrentUserOrThrow(ctx);
     const project = await ctx.db.get(args.projectId);
     if (!project) {
       throw new Error("Project not found");
     }
 
     // Only allow the project creator to add media
-    if (project.userId !== identity.subject) {
+    if (project.userId !== user._id) {
       throw new Error("You can only edit your own projects");
     }
 
@@ -81,18 +92,14 @@ export const deleteMediaFromProject = mutation({
     mediaId: v.id("mediaFiles"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
+    const user = await getCurrentUserOrThrow(ctx);
     const project = await ctx.db.get(args.projectId);
     if (!project) {
       throw new Error("Project not found");
     }
 
     // Only allow the project creator to delete media
-    if (project.userId !== identity.subject) {
+    if (project.userId !== user._id) {
       throw new Error("You can only edit your own projects");
     }
 
@@ -141,12 +148,10 @@ export const create = action({
     }>;
   }> => {
 
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
+    const user = await ctx.runQuery(internal.projects.getCurrentUserInternal, {});
+    if (!user) {
       throw new Error("Unauthorized");
     }
-
-    const userId = identity.subject;
 
     // Create project as "pending"
     const projectId: Id<"projects"> = await ctx.runMutation(
@@ -158,7 +163,7 @@ export const create = action({
         link: args.link,
         focusAreaIds: args.focusAreaIds,
         status: "pending" as const,
-        userId
+        userId: user._id,
       }
     );
 
@@ -210,7 +215,7 @@ export const createProject = internalMutation({
     name: v.string(),
     summary: v.string(),
     status: v.union(v.literal("pending"), v.literal("active")),
-    userId: v.string(),
+    userId: v.id("users"),
     headline: v.optional(v.string()),
     link: v.optional(v.string()),
     focusAreaIds: v.array(v.id("focusAreas")),
@@ -218,7 +223,7 @@ export const createProject = internalMutation({
   handler: async (ctx, args) => {
     let teamId: Id<"teams"> | undefined = undefined;
 
-    const user = await userByExternalId(ctx, args.userId);
+    const user = await ctx.db.get(args.userId);
     if (user?.teamId) {
       teamId = user.teamId;
     }
@@ -295,11 +300,12 @@ export const populateProjectDetails = internalQuery({
         upvotes: v.number(),
         entryId: v.optional(v.string()),
         status: v.union(v.literal("pending"), v.literal("active")),
-        userId: v.string(),
+        userId: v.id("users"),
         _creationTime: v.number(),
         headline: v.optional(v.string()),
         allFields: v.optional(v.string()),
         link: v.optional(v.string()),
+        focusAreaIds: v.array(v.id("focusAreas")),
       })
     ),
   },
@@ -312,7 +318,7 @@ export const populateProjectDetails = internalQuery({
           .collect();
 
         // Get creator information
-        const creator = await userByExternalId(ctx, project.userId);
+        const creator = await ctx.db.get(project.userId);
 
         // Get team information
         let teamName = "";
@@ -397,8 +403,8 @@ export const updateProject = action({
     focusAreaIds: v.array(v.id("focusAreas")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
+    const user = await ctx.runQuery(internal.projects.getCurrentUserInternal, {});
+    if (!user) {
       throw new Error("Unauthorized");
     }
 
@@ -410,7 +416,7 @@ export const updateProject = action({
     }
 
     // Only allow the project creator to edit
-    if (project.userId !== identity.subject) {
+    if (project.userId !== user._id) {
       throw new Error("You can only edit your own projects");
     }
 
@@ -526,9 +532,9 @@ export const list = query({
         .map((fa) => [fa._id, fa])
     );
 
-    // Get current user identity
-    const identity = await ctx.auth.getUserIdentity();
-    const userId = identity?.subject;
+    // Get current user
+    const currentUser = await getCurrentUser(ctx);
+    const userId = currentUser?._id;
 
     // Get upvote counts and user upvote status for each project
     const projectsWithCounts = await Promise.all(
@@ -552,7 +558,7 @@ export const list = query({
         }
 
         // Get creator information
-        const creator = await userByExternalId(ctx, project.userId);
+        const creator = await ctx.db.get(project.userId);
         
         // Get team information
         let teamName = "";
@@ -591,17 +597,15 @@ export const list = query({
 export const getUserProjects = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
+    const currentUser = await getCurrentUser(ctx);
+    if (!currentUser) {
       return [];
     }
-
-    const userId = identity.subject;
 
     // Get all projects created by this user (both pending and active)
     const projects = await ctx.db
       .query("projects")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .withIndex("by_userId", (q) => q.eq("userId", currentUser._id))
       .collect();
 
     // Get upvote counts and creator info for each project
@@ -613,7 +617,7 @@ export const getUserProjects = query({
           .collect();
 
         // Get creator information
-        const creator = await userByExternalId(ctx, project.userId);
+        const creator = await ctx.db.get(project.userId);
 
         // Get team information
         let teamName = "";
@@ -663,7 +667,7 @@ export const getNewestProjects = query({
           .collect();
 
         // Get creator info
-        const creator = await userByExternalId(ctx, project.userId);
+        const creator = await ctx.db.get(project.userId);
 
         // Get team name
         let teamName = "";
@@ -709,20 +713,20 @@ export const getById = query({
       .collect();
 
     // Check if current user has upvoted
-    const identity = await ctx.auth.getUserIdentity();
+    const currentUser = await getCurrentUser(ctx);
     let hasUpvoted = false;
-    if (identity) {
+    if (currentUser) {
       const userUpvote = await ctx.db
         .query("upvotes")
         .withIndex("by_project_and_user", (q) =>
-          q.eq("projectId", args.projectId).eq("userId", identity.subject)
+          q.eq("projectId", args.projectId).eq("userId", currentUser._id)
         )
         .first();
       hasUpvoted = !!userUpvote;
     }
 
     // Get creator information
-    const creator = await userByExternalId(ctx, project.userId);
+    const creator = await ctx.db.get(project.userId);
 
     // Get team information
     let teamName = "";
@@ -962,18 +966,13 @@ export const toggleUpvote = mutation({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
-    const userId = identity.subject;
+    const user = await getCurrentUserOrThrow(ctx);
 
     // Check if user has already upvoted
     const existingUpvote = await ctx.db
       .query("upvotes")
       .withIndex("by_project_and_user", (q) =>
-        q.eq("projectId", args.projectId).eq("userId", userId)
+        q.eq("projectId", args.projectId).eq("userId", user._id)
       )
       .first();
 
@@ -984,7 +983,7 @@ export const toggleUpvote = mutation({
       // User hasn't upvoted - add it
       await ctx.db.insert("upvotes", {
         projectId: args.projectId,
-        userId,
+        userId: user._id,
         createdAt: Date.now(),
       });
     }
@@ -996,17 +995,15 @@ export const hasUserUpvoted = query({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
       return false;
     }
-
-    const userId = identity.subject;
 
     const upvote = await ctx.db
       .query("upvotes")
       .withIndex("by_project_and_user", (q) =>
-        q.eq("projectId", args.projectId).eq("userId", userId)
+        q.eq("projectId", args.projectId).eq("userId", user._id)
       )
       .first();
 

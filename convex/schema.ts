@@ -9,7 +9,7 @@ export default defineSchema({
     upvotes: v.number(),
     entryId: v.optional(v.string()),
     status: v.union(v.literal("pending"), v.literal("active")),
-    userId: v.string(),
+    userId: v.id("users"),
     headline: v.optional(v.string()),
     allFields: v.optional(v.string()),
     link: v.optional(v.string()),
@@ -32,14 +32,14 @@ export default defineSchema({
     .index("by_project_ordered", ["projectId", "order"]),
   upvotes: defineTable({
     projectId: v.id("projects"),
-    userId: v.string(),
+    userId: v.id("users"),
     createdAt: v.number(),
   })
     .index("by_project", ["projectId"])
     .index("by_project_and_user", ["projectId", "userId"]),
   comments: defineTable({
     projectId: v.id("projects"),
-    userId: v.string(),
+    userId: v.id("users"),
     content: v.string(),
     parentCommentId: v.optional(v.id("comments")),
     createdAt: v.number(),
@@ -50,7 +50,7 @@ export default defineSchema({
     .index("by_parent", ["parentCommentId"]),
   commentUpvotes: defineTable({
     commentId: v.id("comments"),
-    userId: v.string(),
+    userId: v.id("users"),
     createdAt: v.number(),
   })
     .index("by_comment", ["commentId"])
