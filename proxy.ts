@@ -1,6 +1,11 @@
-import { clerkMiddleware } from '@clerk/nextjs/server'
+import { authkitMiddleware } from '@workos-inc/authkit-nextjs';
 
-export default clerkMiddleware()
+export default authkitMiddleware({
+  middlewareAuth: {
+    enabled: true,
+    unauthenticatedPaths: ['/', '/sign-in', '/sign-up'],
+  },
+});
 
 export const config = {
   matcher: [
@@ -9,4 +14,4 @@ export const config = {
     // Always run for API routes
     '/(api|trpc)(.*)',
   ],
-}
+};

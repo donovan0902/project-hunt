@@ -58,12 +58,12 @@ export default defineSchema({
     .index("by_user", ["userId"]),
   users: defineTable({
     name: v.string(),
-    externalId: v.string(),
+    tokenIdentifier: v.string(),
     avatarUrlId: v.string(),
     email: v.optional(v.string()),
     teamId: v.optional(v.id("teams")),
   })
-    .index("byExternalId", ["externalId"])
+    .index("by_tokenIdentifier", ["tokenIdentifier"])
     .index("by_teamId", ["teamId"]),
   teams: defineTable({
     name: v.string(),
