@@ -51,7 +51,7 @@ export const getComments = query({
             upvotes: comment.upvotes ?? 0,
             hasUpvoted: false,
             userName: user?.name ?? "Unknown User",
-            userAvatar: user?.avatarUrlId ?? "",
+            userAvatar: user?.image ?? "",
           };
         })
       );
@@ -74,7 +74,7 @@ export const getComments = query({
           upvotes: comment.upvotes ?? 0,
           hasUpvoted: upvotedCommentIds.has(comment._id),
           userName: user?.name ?? "Unknown User",
-          userAvatar: user?.avatarUrlId ?? "",
+          userAvatar: user?.image ?? "",
         };
       })
     );

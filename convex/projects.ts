@@ -328,7 +328,7 @@ export const populateProjectDetails = internalQuery({
           team: teamName,
           upvotes: upvotes.length,
           creatorName: creator?.name ?? "Unknown User",
-          creatorAvatar: creator?.avatarUrlId ?? "",
+          creatorAvatar: creator?.image ?? "",
         };
       })
     );
@@ -577,7 +577,7 @@ export const list = query({
           commentCount: comments.length,
           hasUpvoted,
           creatorName: creator?.name ?? "Unknown User",
-          creatorAvatar: creator?.avatarUrlId ?? "",
+          creatorAvatar: creator?.image ?? "",
           focusAreas,
         };
       })
@@ -627,7 +627,7 @@ export const getUserProjects = query({
           team: teamName,
           upvotes: upvotes.length,
           creatorName: creator?.name ?? "Unknown User",
-          creatorAvatar: creator?.avatarUrlId ?? "",
+          creatorAvatar: creator?.image ?? "",
         };
       })
     );
@@ -679,7 +679,7 @@ export const getNewestProjects = query({
           team: teamName,
           upvotes: upvotes.length,
           creatorName: creator?.name ?? "Unknown User",
-          creatorAvatar: creator?.avatarUrlId ?? "",
+          creatorAvatar: creator?.image ?? "",
           _creationTime: project._creationTime,
         };
       })
@@ -748,7 +748,7 @@ export const getById = query({
       upvotes: upvotes.length,
       hasUpvoted,
       creatorName: creator?.name ?? "Unknown User",
-      creatorAvatar: creator?.avatarUrlId ?? "",
+      creatorAvatar: creator?.image ?? "",
       focusAreas,
     };
   },

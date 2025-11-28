@@ -15,7 +15,7 @@ export const upsertFromClerk = internalMutation({
     const userAttributes = {
       name: `${data.first_name} ${data.last_name}`,
       externalId: data.id,
-      avatarUrlId: data.image_url,
+      image: data.image_url,
       email: data.email_addresses?.find((e: any) => e.id === data.primary_email_address_id)?.email_address,
     };
 
