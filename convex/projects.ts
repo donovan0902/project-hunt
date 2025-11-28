@@ -7,7 +7,6 @@ import { internal } from "./_generated/api";
 import { rag } from "./rag";
 import type { Id } from "./_generated/dataModel";
 import type { EntryId } from "@convex-dev/rag";
-import { userByExternalId } from "./users";
 import { hybridRank } from "@convex-dev/rag";
 
 export const generateUploadUrl = mutation({
@@ -218,7 +217,7 @@ export const createProject = internalMutation({
   handler: async (ctx, args) => {
     let teamId: Id<"teams"> | undefined = undefined;
 
-    const user = await userByExternalId(ctx, args.userId);
+    const user = await ctx.db.get(args.userId as Id<"users">);
     if (user?.teamId) {
       teamId = user.teamId;
     }
@@ -312,7 +311,7 @@ export const populateProjectDetails = internalQuery({
           .collect();
 
         // Get creator information
-        const creator = await userByExternalId(ctx, project.userId);
+        const creator = await ctx.db.get(project.userId as Id<"users">);
 
         // Get team information
         let teamName = "";
@@ -552,7 +551,7 @@ export const list = query({
         }
 
         // Get creator information
-        const creator = await userByExternalId(ctx, project.userId);
+        const creator = await ctx.db.get(project.userId as Id<"users">);
         
         // Get team information
         let teamName = "";
@@ -613,7 +612,7 @@ export const getUserProjects = query({
           .collect();
 
         // Get creator information
-        const creator = await userByExternalId(ctx, project.userId);
+        const creator = await ctx.db.get(project.userId as Id<"users">);
 
         // Get team information
         let teamName = "";
@@ -663,7 +662,7 @@ export const getNewestProjects = query({
           .collect();
 
         // Get creator info
-        const creator = await userByExternalId(ctx, project.userId);
+        const creator = await ctx.db.get(project.userId as Id<"users">);
 
         // Get team name
         let teamName = "";
@@ -722,7 +721,7 @@ export const getById = query({
     }
 
     // Get creator information
-    const creator = await userByExternalId(ctx, project.userId);
+    const creator = await ctx.db.get(project.userId as Id<"users">);
 
     // Get team information
     let teamName = "";

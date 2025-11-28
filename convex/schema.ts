@@ -74,11 +74,9 @@ export default defineSchema({
   ...authTables,
   users: defineTable({
     name: v.string(),
-    externalId: v.string(),
     image: v.string(),
     email: v.optional(v.string()),
     teamId: v.optional(v.id("teams")),
   })
-    .index("byExternalId", ["externalId"])
     .index("by_teamId", ["teamId"]),
 });

@@ -2,7 +2,6 @@ import { action, query } from "./_generated/server";
 import { internalMutation } from "./functions";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { userByExternalId } from "./users";
 import type { Id } from "./_generated/dataModel";
 
 export const createTeam = action({
@@ -52,7 +51,7 @@ export const associateUserWithTeam = internalMutation({
     teamId: v.id("teams"),
   },
   handler: async (ctx, args) => {
-    const user = await userByExternalId(ctx, args.clerkId);
+    const user = await ctx.db.get(args.clerkId as Id<"users">);
     if (!user) {
       throw new Error("User not found");
     }
