@@ -8,13 +8,13 @@
  * @module
  */
 
-import type * as auth from "../auth.js";
 import type * as comments from "../comments.js";
 import type * as focusAreas from "../focusAreas.js";
 import type * as functions from "../functions.js";
 import type * as http from "../http.js";
 import type * as projects from "../projects.js";
 import type * as rag from "../rag.js";
+import type * as seed from "../seed.js";
 import type * as teams from "../teams.js";
 import type * as users from "../users.js";
 
@@ -33,13 +33,13 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
-  auth: typeof auth;
   comments: typeof comments;
   focusAreas: typeof focusAreas;
   functions: typeof functions;
   http: typeof http;
   projects: typeof projects;
   rag: typeof rag;
+  seed: typeof seed;
   teams: typeof teams;
   users: typeof users;
 }>;

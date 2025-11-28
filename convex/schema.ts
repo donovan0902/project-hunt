@@ -1,6 +1,5 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
   projects: defineTable({
@@ -57,6 +56,15 @@ export default defineSchema({
     .index("by_comment", ["commentId"])
     .index("by_comment_and_user", ["commentId", "userId"])
     .index("by_user", ["userId"]),
+  users: defineTable({
+    name: v.string(),
+    externalId: v.string(),
+    avatarUrlId: v.string(),
+    email: v.optional(v.string()),
+    teamId: v.optional(v.id("teams")),
+  })
+    .index("byExternalId", ["externalId"])
+    .index("by_teamId", ["teamId"]),
   teams: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
@@ -71,12 +79,4 @@ export default defineSchema({
   })
     .index("by_isActive", ["isActive"])
     .index("by_group", ["group"]),
-  ...authTables,
-  users: defineTable({
-    name: v.string(),
-    image: v.string(),
-    email: v.optional(v.string()),
-    teamId: v.optional(v.id("teams")),
-  })
-    .index("by_teamId", ["teamId"]),
 });

@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
+import { userByExternalId } from "./users";
 
 export const addComment = mutation({
   args: {
@@ -45,13 +45,13 @@ export const getComments = query({
       // Enrich comments with user data even for unauthenticated users
       const enrichedComments = await Promise.all(
         sorted.map(async (comment) => {
-          const user = await ctx.db.get(comment.userId as Id<"users">);
+          const user = await userByExternalId(ctx, comment.userId);
           return {
             ...comment,
             upvotes: comment.upvotes ?? 0,
             hasUpvoted: false,
             userName: user?.name ?? "Unknown User",
-            userAvatar: user?.image ?? "",
+            userAvatar: user?.avatarUrlId ?? "",
           };
         })
       );
@@ -68,13 +68,13 @@ export const getComments = query({
     // Enrich comments with user data
     const enrichedComments = await Promise.all(
       sorted.map(async (comment) => {
-        const user = await ctx.db.get(comment.userId as Id<"users">);
+        const user = await userByExternalId(ctx, comment.userId);
         return {
           ...comment,
           upvotes: comment.upvotes ?? 0,
           hasUpvoted: upvotedCommentIds.has(comment._id),
           userName: user?.name ?? "Unknown User",
-          userAvatar: user?.image ?? "",
+          userAvatar: user?.avatarUrlId ?? "",
         };
       })
     );

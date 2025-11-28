@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ConvexClientProvider from "@/app/ConvexClientProvider";
-// import { ClerkProvider } from '@clerk/nextjs'
-import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
+import { ClerkProvider } from '@clerk/nextjs'
 import { Header } from "@/components/header";
 
 
@@ -33,12 +32,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-zinc-50 text-zinc-900`}
       >
-        <ConvexAuthNextjsServerProvider>
+        <ClerkProvider>
           <ConvexClientProvider>
             <Header />
             {children}
           </ConvexClientProvider>
-        </ConvexAuthNextjsServerProvider>
+        </ClerkProvider>
       </body>
     </html>
   );

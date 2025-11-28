@@ -7,6 +7,7 @@ import { internal } from "./_generated/api";
 import { rag } from "./rag";
 import type { Id } from "./_generated/dataModel";
 import type { EntryId } from "@convex-dev/rag";
+import { userByExternalId } from "./users";
 import { hybridRank } from "@convex-dev/rag";
 
 export const generateUploadUrl = mutation({
@@ -217,7 +218,7 @@ export const createProject = internalMutation({
   handler: async (ctx, args) => {
     let teamId: Id<"teams"> | undefined = undefined;
 
-    const user = await ctx.db.get(args.userId as Id<"users">);
+    const user = await userByExternalId(ctx, args.userId);
     if (user?.teamId) {
       teamId = user.teamId;
     }
@@ -311,7 +312,7 @@ export const populateProjectDetails = internalQuery({
           .collect();
 
         // Get creator information
-        const creator = await ctx.db.get(project.userId as Id<"users">);
+        const creator = await userByExternalId(ctx, project.userId);
 
         // Get team information
         let teamName = "";
@@ -327,7 +328,7 @@ export const populateProjectDetails = internalQuery({
           team: teamName,
           upvotes: upvotes.length,
           creatorName: creator?.name ?? "Unknown User",
-          creatorAvatar: creator?.image ?? "",
+          creatorAvatar: creator?.avatarUrlId ?? "",
         };
       })
     );
@@ -551,7 +552,7 @@ export const list = query({
         }
 
         // Get creator information
-        const creator = await ctx.db.get(project.userId as Id<"users">);
+        const creator = await userByExternalId(ctx, project.userId);
         
         // Get team information
         let teamName = "";
@@ -576,7 +577,7 @@ export const list = query({
           commentCount: comments.length,
           hasUpvoted,
           creatorName: creator?.name ?? "Unknown User",
-          creatorAvatar: creator?.image ?? "",
+          creatorAvatar: creator?.avatarUrlId ?? "",
           focusAreas,
         };
       })
@@ -612,7 +613,7 @@ export const getUserProjects = query({
           .collect();
 
         // Get creator information
-        const creator = await ctx.db.get(project.userId as Id<"users">);
+        const creator = await userByExternalId(ctx, project.userId);
 
         // Get team information
         let teamName = "";
@@ -626,7 +627,7 @@ export const getUserProjects = query({
           team: teamName,
           upvotes: upvotes.length,
           creatorName: creator?.name ?? "Unknown User",
-          creatorAvatar: creator?.image ?? "",
+          creatorAvatar: creator?.avatarUrlId ?? "",
         };
       })
     );
@@ -662,7 +663,7 @@ export const getNewestProjects = query({
           .collect();
 
         // Get creator info
-        const creator = await ctx.db.get(project.userId as Id<"users">);
+        const creator = await userByExternalId(ctx, project.userId);
 
         // Get team name
         let teamName = "";
@@ -678,7 +679,7 @@ export const getNewestProjects = query({
           team: teamName,
           upvotes: upvotes.length,
           creatorName: creator?.name ?? "Unknown User",
-          creatorAvatar: creator?.image ?? "",
+          creatorAvatar: creator?.avatarUrlId ?? "",
           _creationTime: project._creationTime,
         };
       })
@@ -721,7 +722,7 @@ export const getById = query({
     }
 
     // Get creator information
-    const creator = await ctx.db.get(project.userId as Id<"users">);
+    const creator = await userByExternalId(ctx, project.userId);
 
     // Get team information
     let teamName = "";
@@ -747,7 +748,7 @@ export const getById = query({
       upvotes: upvotes.length,
       hasUpvoted,
       creatorName: creator?.name ?? "Unknown User",
-      creatorAvatar: creator?.image ?? "",
+      creatorAvatar: creator?.avatarUrlId ?? "",
       focusAreas,
     };
   },
