@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { userByExternalId } from "./users";
+import { getCurrentUserOrThrow } from "./users";
 
 export const addComment = mutation({
   args: {
@@ -9,14 +9,11 @@ export const addComment = mutation({
     parentCommentId: v.optional(v.id("comments")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
+    const user = await getCurrentUserOrThrow(ctx);
 
     return await ctx.db.insert("comments", {
       projectId: args.projectId,
-      userId: identity.subject,
+      userId: user._id,
       content: args.content,
       parentCommentId: args.parentCommentId,
       createdAt: Date.now(),
@@ -38,14 +35,14 @@ export const getComments = query({
 
     const sorted = comments.sort((a, b) => a.createdAt - b.createdAt);
 
-    const identity = await ctx.auth.getUserIdentity();
-    const userId = identity?.subject;
+    const user = await getCurrentUserOrThrow(ctx);
+    const userId = user?._id;
 
     if (!userId) {
       // Enrich comments with user data even for unauthenticated users
       const enrichedComments = await Promise.all(
         sorted.map(async (comment) => {
-          const user = await userByExternalId(ctx, comment.userId);
+          const user = await ctx.db.get(comment.userId);
           return {
             ...comment,
             upvotes: comment.upvotes ?? 0,
@@ -58,6 +55,7 @@ export const getComments = query({
       return enrichedComments;
     }
 
+    // if the user is authenticated, get their upvotes
     const userUpvotes = await ctx.db
       .query("commentUpvotes")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -68,7 +66,7 @@ export const getComments = query({
     // Enrich comments with user data
     const enrichedComments = await Promise.all(
       sorted.map(async (comment) => {
-        const user = await userByExternalId(ctx, comment.userId);
+        const user = await ctx.db.get(comment.userId);
         return {
           ...comment,
           upvotes: comment.upvotes ?? 0,
@@ -88,18 +86,14 @@ export const deleteComment = mutation({
     commentId: v.id("comments"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
+    const user = await getCurrentUserOrThrow(ctx);
     const comment = await ctx.db.get(args.commentId);
     if (!comment) {
       throw new Error("Comment not found");
     }
 
     // Only allow the comment owner to delete
-    if (comment.userId !== identity.subject) {
+    if (comment.userId !== user._id) {
       throw new Error("You can only delete your own comments");
     }
 
@@ -123,17 +117,13 @@ export const toggleCommentUpvote = mutation({
     commentId: v.id("comments"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
+    const user = await getCurrentUserOrThrow(ctx);
     const comment = await ctx.db.get(args.commentId);
     if (!comment || comment.isDeleted) {
       throw new Error("Comment not found");
     }
 
-    const userId = identity.subject;
+    const userId = user._id;
     const existing = await ctx.db
       .query("commentUpvotes")
       .withIndex("by_comment_and_user", (q) =>
