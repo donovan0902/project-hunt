@@ -67,7 +67,9 @@ export function Header() {
             /> */}
             {/* user profile picture */}
             <div className="h-9 w-9 rounded-full bg-zinc-200">
-              <Image src={user?.profilePictureUrl ?? ""} alt={user?.firstName ?? ""} width={36} height={36} />
+              {user?.profilePictureUrl && (
+                <Image src={user.profilePictureUrl} alt={user?.firstName ?? ""} width={36} height={36} />
+              )}
             </div>
 
             <Button size="sm" variant="ghost" onClick={() => signOut()}>
