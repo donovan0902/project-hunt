@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Provides styles for Radix Themes components and its theming API */
+@import '@radix-ui/themes/styles.css';
+/* Provides additional styles specific to WorkOS Widgets */
+@import '@workos-inc/widgets/styles.css';
+
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

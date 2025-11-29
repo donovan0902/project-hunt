@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/SearchBar";
+import { useAuth } from '@workos-inc/authkit-nextjs/components';
+import Image from "next/image";
+
 
 export function Header() {
+  const { user } = useAuth();
   return (
     <header className="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
@@ -28,16 +31,16 @@ export function Header() {
         {/* Right: Auth Buttons */}
         <div className="flex items-center gap-3">
           <Unauthenticated>
-            <SignInButton mode="modal">
-              <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm">
+              <Link href="/sign-in">
                 Sign In
-              </Button>
-            </SignInButton>
-            <SignUpButton mode="modal">
-              <Button size="sm">
+              </Link>
+            </Button>
+            <Button size="sm" asChild>
+              <Link href="/sign-up">
                 Sign Up
-              </Button>
-            </SignUpButton>
+              </Link>
+            </Button>
           </Unauthenticated>
 
           <Authenticated>
@@ -51,13 +54,17 @@ export function Header() {
                 Submit Project
               </Button>
             </Link>
-            <UserButton
+            {/* <UserButton
               appearance={{
                 elements: {
                   avatarBox: "h-9 w-9",
                 },
               }}
-            />
+            /> */}
+            {/* user profile picture */}
+            <div className="h-9 w-9 rounded-full bg-zinc-200">
+              <Image src={user?.profilePictureUrl ?? ""} alt={user?.firstName ?? ""} width={36} height={36} />
+            </div>
           </Authenticated>
 
           <AuthLoading>

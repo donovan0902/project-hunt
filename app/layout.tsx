@@ -3,7 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ConvexClientProvider } from "@/components/ConvexClientProvider";
 import { Header } from "@/components/header";
-
+import { WorkOsWidgets } from "@workos-inc/widgets";
+import UserGate from "@/components/UserGate";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,8 +33,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-zinc-50 text-zinc-900`}
       >
           <ConvexClientProvider>
-            <Header />
-            {children}
+            <WorkOsWidgets>
+              <Header />
+                <UserGate>
+                  {children}
+                </UserGate>
+            </WorkOsWidgets>
           </ConvexClientProvider>
       </body>
     </html>

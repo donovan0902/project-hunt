@@ -6,8 +6,9 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CommentForm } from "./CommentForm";
-import { SignInButton, useUser } from "@clerk/nextjs";
 import { Id } from "@/convex/_generated/dataModel";
+import { useCurrentUser } from "@/app/useCurrentUser";
+import Link from "next/link";
 
 interface Comment {
   _id: Id<"comments">;
@@ -36,7 +37,7 @@ export function CommentThread({
   projectId,
   depth = 0,
 }: CommentThreadProps) {
-  const { user } = useUser();
+  const { user } = useCurrentUser();
   const deleteComment = useMutation(api.comments.deleteComment);
   const toggleCommentUpvote = useMutation(api.comments.toggleCommentUpvote);
   const { isAuthenticated } = useConvexAuth();
@@ -49,7 +50,7 @@ export function CommentThread({
     (c) => c.parentCommentId === comment._id && !c.isDeleted
   );
 
-  const isOwner = user?.id === comment.userId;
+  const isOwner = user?._id === comment.userId;
 
   // Format timestamp
   const timeAgo = (timestamp: number) => {
@@ -134,16 +135,17 @@ export function CommentThread({
                   ↑ {currentUpvotes}
                 </Button>
               ) : (
-                <SignInButton mode="modal">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={(e) => e.stopPropagation()}
                     className="h-7 px-2 text-xs"
+                    asChild
                   >
+                    <Link href="/sign-in">
                     ↑ {currentUpvotes}
+                    </Link>
                   </Button>
-                </SignInButton>
               )}
               {depth < 3 && (
                 <Button
@@ -151,8 +153,11 @@ export function CommentThread({
                   size="sm"
                   onClick={() => setShowReplyForm(!showReplyForm)}
                   className="h-7 px-2 text-xs"
+                  asChild
                 >
-                  Reply
+                  <Link href="/sign-in">
+                    Reply
+                  </Link>
                 </Button>
               )}
               {isOwner && (

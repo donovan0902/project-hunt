@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
-import { SignInButton } from "@clerk/nextjs";
 import { MessageCircle } from "lucide-react";
 import { FocusAreaBadges } from "@/components/FocusAreaBadges";
 
@@ -154,11 +153,11 @@ function ShareProjectCallout() {
           </Link>
         </Authenticated>
         <Unauthenticated>
-          <SignInButton mode="modal">
-            <Button size="sm" className="whitespace-nowrap">
-              Submit a project
+            <Button size="sm" className="whitespace-nowrap" asChild>
+              <Link href="/sign-in">
+                Submit a project
+              </Link>
             </Button>
-          </SignInButton>
         </Unauthenticated>
         <AuthLoading>
           <Button size="sm" className="whitespace-nowrap" disabled>
@@ -233,16 +232,16 @@ function ProjectRow({
             </motion.div>
           ) : (
             <motion.div whileTap={{ scale: 1.15, rotate: -3 }} transition={{ type: "spring", stiffness: 800, damping: 20 }}>
-              <SignInButton mode="modal">
                 <Button
                   variant="outline"
                   onClick={(e) => e.stopPropagation()}
                   className="flex min-h-[3.25rem] min-w-[4rem] flex-col items-center justify-center gap-1 rounded-2xl border-zinc-200 px-3 py-3 text-sm font-semibold leading-tight hover:!bg-background hover:!text-foreground hover:ring-2 hover:ring-accent hover:ring-offset-2 transition-all"
                 >
-                  <span aria-hidden="true" className="text-inherit">↑</span>
-                  <span className="text-sm font-semibold text-inherit">{project.upvotes}</span>
+                  <Link href="/sign-in">
+                    <span aria-hidden="true" className="text-inherit">↑</span>
+                    <span className="text-sm font-semibold text-inherit">{project.upvotes}</span>
+                  </Link>
                 </Button>
-              </SignInButton>
             </motion.div>
           )}
         </div>

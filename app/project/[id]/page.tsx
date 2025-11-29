@@ -4,12 +4,12 @@ import { use } from "react";
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useCurrentUser } from "@/app/useCurrentUser";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { SignInButton, useUser } from "@clerk/nextjs";
 import { CommentForm } from "@/components/CommentForm";
 import { CommentThread } from "@/components/CommentThread";
 import {
@@ -20,6 +20,7 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { FocusAreaBadges } from "@/components/FocusAreaBadges";
+import Link from "next/link";
 
 function MediaCarousel({
   mediaFiles,
@@ -140,15 +141,14 @@ export default function ProjectPage({
 }) {
   const router = useRouter();
   const { id } = use(params);
-  const { isAuthenticated } = useConvexAuth();
-  const { user } = useUser();
+  const { isAuthenticated, user } = useCurrentUser();
   const projectId = id as Id<"projects">;
   const project = useQuery(api.projects.getById, { projectId });
   const projectMedia = useQuery(api.projects.getProjectMedia, { projectId });
   const comments = useQuery(api.comments.getComments, { projectId });
   const toggleUpvote = useMutation(api.projects.toggleUpvote);
 
-  const isOwner = user && project && project.userId === user.id;
+  const isOwner = user && project && project.userId === user._id;
 
   // Get top-level comments (no parent)
   const topLevelComments =
@@ -241,14 +241,15 @@ export default function ProjectPage({
               </motion.div>
             ) : (
               <motion.div whileTap={{ scale: 1.15, rotate: -3 }} transition={{ type: "spring", stiffness: 800, damping: 20 }}>
-                <SignInButton mode="modal">
                   <Button
                     variant="outline"
                     className="rounded-full border-zinc-200 px-6 py-3 text-base font-semibold !text-foreground hover:!bg-background hover:!text-foreground hover:ring-2 hover:ring-accent hover:ring-offset-2 transition-all"
+                    asChild
                   >
+                    <Link href="/sign-in">
                     ↑ {project.upvotes}
+                    </Link>
                   </Button>
-                </SignInButton>
               </motion.div>
             )}
           </div>

@@ -5,8 +5,8 @@ import { useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { SignInButton } from "@clerk/nextjs";
 import { Id } from "@/convex/_generated/dataModel";
+import Link from "next/link";
 
 interface CommentFormProps {
   projectId: Id<"projects">;
@@ -55,9 +55,11 @@ export function CommentForm({
         <p className="mb-3 text-sm text-zinc-500">
           Sign in to join the discussion
         </p>
-        <SignInButton mode="modal">
-          <Button variant="outline">Sign In</Button>
-        </SignInButton>
+        <Button variant="outline" asChild>
+          <Link href="/sign-in">
+            Sign In
+          </Link>
+        </Button>
       </div>
     );
   }
