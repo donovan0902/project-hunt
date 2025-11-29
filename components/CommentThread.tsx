@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useConvexAuth } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CommentForm } from "./CommentForm";
 import { Id } from "@/convex/_generated/dataModel";
 import { useCurrentUser } from "@/app/useCurrentUser";
-import Link from "next/link";
 
 interface Comment {
   _id: Id<"comments">;
@@ -40,7 +39,6 @@ export function CommentThread({
   const { user } = useCurrentUser();
   const deleteComment = useMutation(api.comments.deleteComment);
   const toggleCommentUpvote = useMutation(api.comments.toggleCommentUpvote);
-  const { isAuthenticated } = useConvexAuth();
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTogglingUpvote, setIsTogglingUpvote] = useState(false);
@@ -124,40 +122,23 @@ export function CommentThread({
               {comment.content}
             </p>
             <div className="mt-2 flex items-center gap-2">
-              {isAuthenticated ? (
-                <Button
-                  variant={hasUpvoted ? "default" : "outline"}
-                  size="sm"
-                  onClick={handleToggleUpvote}
-                  disabled={isTogglingUpvote}
-                  className="h-7 px-2 text-xs"
-                >
-                  ↑ {currentUpvotes}
-                </Button>
-              ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => e.stopPropagation()}
-                    className="h-7 px-2 text-xs"
-                    asChild
-                  >
-                    <Link href="/sign-in">
-                    ↑ {currentUpvotes}
-                    </Link>
-                  </Button>
-              )}
+              <Button
+                variant={hasUpvoted ? "default" : "outline"}
+                size="sm"
+                onClick={handleToggleUpvote}
+                disabled={isTogglingUpvote}
+                className="h-7 px-2 text-xs"
+              >
+                ↑ {currentUpvotes}
+              </Button>
               {depth < 3 && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowReplyForm(!showReplyForm)}
                   className="h-7 px-2 text-xs"
-                  asChild
                 >
-                  <Link href="/sign-in">
-                    Reply
-                  </Link>
+                  Reply
                 </Button>
               )}
               {isOwner && (

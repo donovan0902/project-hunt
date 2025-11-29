@@ -24,14 +24,14 @@ export function useStoreUserEffect() {
     // object on the server. You don't need to pass anything manually here.
     async function createUser() {
       // store the user id from workos in the database for easier linking to workos (eg. for workos widgets that need to know the user id)
-      const id = await storeUser({ workosUserId: user?.id ?? "" });
+      const id = await storeUser({ workosUserId: user?.id ?? "", name: (user?.firstName ?? "") + " " + (user?.lastName ?? ""), avatarUrlId: user?.profilePictureUrl ?? "" });
       setUserId(id);
     }
     createUser();
     return () => setUserId(null);
     // Make sure the effect reruns if the user logs in with
     // a different identity
-  }, [isAuthenticated, storeUser, user?.id]);
+  }, [isAuthenticated, storeUser, user]);
   // Combine the local state with the state from context
   return {
     isLoading: isLoading || (isAuthenticated && userId === null),

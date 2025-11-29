@@ -10,7 +10,7 @@ export const current = query({
 });
 
 export const store = mutation({
-  args: { workosUserId: v.string() },
+  args: { workosUserId: v.string(), name: v.string(), avatarUrlId: v.string() },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -29,17 +29,17 @@ export const store = mutation({
       )
       .unique();
     if (user !== null) {
-      // If we've seen this identity before but the name has changed, patch the value.
-      if (user.name !== identity.name) {
-        await ctx.db.patch(user._id, { name: identity.name });
+      // If we've seen this identity before but the name or avatar url has changed, patch the value.
+      if (user.name !== args.name || user.avatarUrlId !== args.avatarUrlId) {
+        await ctx.db.patch(user._id, { name: args.name, avatarUrlId: args.avatarUrlId });
       }
       return user._id;
     }
     // If it's a new identity, create a new `User`.
     return await ctx.db.insert("users", {
-      name: identity.name ?? "Anonymous",
+      name: args.name ?? "Anonymous",
       tokenIdentifier: identity.tokenIdentifier,
-      avatarUrlId: identity.pictureUrl ?? "",
+      avatarUrlId: args.avatarUrlId,
       workosUserId: args.workosUserId,
     });
   },
@@ -96,7 +96,7 @@ export async function getCurrentUser(ctx: QueryCtx) {
 
   return await ctx.db
     .query("users")
-    .withIndex("by_tokenIdentifier", (q) => q.eq("tokenIdentifier", identity.subject))
+    .withIndex("by_tokenIdentifier", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
     .unique();
 }
 

@@ -20,7 +20,7 @@ export const getCurrentUserInternal = internalQuery({
     }
     return await ctx.db
       .query("users")
-      .withIndex("by_tokenIdentifier", (q) => q.eq("tokenIdentifier", identity.subject))
+      .withIndex("by_tokenIdentifier", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
       .unique();
   },
 });

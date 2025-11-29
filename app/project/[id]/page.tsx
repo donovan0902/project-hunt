@@ -1,7 +1,7 @@
 "use client";
 
 import { use } from "react";
-import { useQuery, useMutation, useConvexAuth } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useCurrentUser } from "@/app/useCurrentUser";

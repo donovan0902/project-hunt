@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/SearchBar";
 import { useAuth } from '@workos-inc/authkit-nextjs/components';
 import Image from "next/image";
+import { signOut } from "@workos-inc/authkit-nextjs";
+import { LogOut } from "lucide-react";
 
 
 export function Header() {
@@ -23,11 +25,13 @@ export function Header() {
           </Link>
         </div>
 
-        {/* Center: Search Bar */}
-        <div className="hidden md:flex flex-1 max-w-md mx-8">
-          <SearchBar className="w-full" />
-        </div>
 
+        {/* Center: Search Bar - show only if authenticated */}
+        <Authenticated>
+          <div className="hidden md:flex flex-1 max-w-md mx-8">
+            <SearchBar className="w-full" />
+          </div>
+        </Authenticated>
         {/* Right: Auth Buttons */}
         <div className="flex items-center gap-3">
           <Unauthenticated>
@@ -65,6 +69,10 @@ export function Header() {
             <div className="h-9 w-9 rounded-full bg-zinc-200">
               <Image src={user?.profilePictureUrl ?? ""} alt={user?.firstName ?? ""} width={36} height={36} />
             </div>
+
+            <Button size="sm" variant="ghost" onClick={() => signOut()}>
+              <LogOut className="h-4 w-4" />
+            </Button>
           </Authenticated>
 
           <AuthLoading>
@@ -73,10 +81,12 @@ export function Header() {
         </div>
       </div>
 
-      {/* Mobile Search Bar */}
-      <div className="md:hidden border-t border-zinc-200 px-4 py-3 bg-white">
-        <SearchBar className="w-full" />
-      </div>
+      {/* Mobile Search Bar - show only if authenticated */}
+      <Authenticated>
+        <div className="md:hidden border-t border-zinc-200 px-4 py-3 bg-white">
+          <SearchBar className="w-full" />
+        </div>
+      </Authenticated>
     </header>
   );
 }
