@@ -22,6 +22,15 @@ export async function POST(request: NextRequest) {
     }
 
     const workos = getWorkOS();
+
+    // check user's organization's allowed domains
+    const allowedDomains = await workos.organizationDomains.get(organizationId);
+    if (!allowedDomains.domain.includes(email.split("@")[1])) {
+      return NextResponse.json(
+        { error: "Email is not allowed for this organization" },
+        { status: 400 }
+      );
+    }
     
     // Send invitation to the specified organization
     const invitation = await workos.userManagement.sendInvitation({
