@@ -24,11 +24,12 @@ export async function POST(request: NextRequest) {
     const workos = getWorkOS();
 
     // check user's organization's allowed domains
-    const allowedDomains = await workos.organizationDomains.get(organizationId);
-    if (!allowedDomains.domain.includes(email.split("@")[1])) {
+    const allowedDomains = await workos.organizations.getOrganization(organizationId);
+    const allowedDomain = allowedDomains.domains.find(domain => domain.domain.includes(email.split("@")[1]));
+    if (!allowedDomain) {
       return NextResponse.json(
         { error: "Email is not allowed for this organization" },
-        { status: 400 }
+        { status: 403 }
       );
     }
     
