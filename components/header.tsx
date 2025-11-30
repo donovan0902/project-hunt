@@ -8,6 +8,7 @@ import { useAuth } from '@workos-inc/authkit-nextjs/components';
 import Image from "next/image";
 import { signOut } from "@workos-inc/authkit-nextjs";
 import { LogOut } from "lucide-react";
+import { InviteUserButton } from "@/components/InviteUserButton";
 
 
 export function Header() {
@@ -35,19 +36,15 @@ export function Header() {
         {/* Right: Auth Buttons */}
         <div className="flex items-center gap-3">
           <Unauthenticated>
-            <Button variant="ghost" size="sm">
+            <Button size="sm" asChild>
               <Link href="/sign-in">
                 Sign In
-              </Link>
-            </Button>
-            <Button size="sm" asChild>
-              <Link href="/sign-up">
-                Sign Up
               </Link>
             </Button>
           </Unauthenticated>
 
           <Authenticated>
+            <InviteUserButton />
             <Link href="/my-projects">
               <Button size="sm" variant="ghost">
                 My Projects
