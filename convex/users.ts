@@ -9,6 +9,7 @@ export const current = query({
   },
 });
 
+// this is the mutation that stores the user in the database downstream of workos user registration action
 export const store = mutation({
   args: { workosUserId: v.string(), name: v.string(), avatarUrlId: v.string() },
   handler: async (ctx, args) => {
@@ -41,6 +42,7 @@ export const store = mutation({
       tokenIdentifier: identity.tokenIdentifier,
       avatarUrlId: args.avatarUrlId,
       workosUserId: args.workosUserId,
+      onboardingCompleted: false,
     });
   },
 });
