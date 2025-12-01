@@ -41,6 +41,11 @@ export function Header() {
                 Sign In
               </Link>
             </Button>
+            <Link href="/sign-up">
+              <Button size="sm">
+                Sign Up
+              </Button>
+            </Link>
           </Unauthenticated>
 
           <Authenticated>
