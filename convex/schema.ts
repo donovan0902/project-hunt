@@ -63,7 +63,7 @@ export default defineSchema({
     teamId: v.optional(v.id("teams")),
     // this is the user id from workos for easier linking to workos (eg. for workos widgets that need to know the user id)
     workosUserId: v.string(),
-    onboardingCompleted: v.boolean(),
+    onboardingCompleted: v.optional(v.boolean()),
   })
     .index("by_tokenIdentifier", ["tokenIdentifier"])
     .index("by_teamId", ["teamId"]),
