@@ -1,32 +1,40 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useConvexAuth } from 'convex/react';
 import { Id } from '@/convex/_generated/dataModel';
+import { FocusAreaPicker } from '@/components/FocusAreaPicker';
+import { FocusAreaBadges } from '@/components/FocusAreaBadges';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
-type OnboardingStep = 'team' | 'interests' | 'profile';
+type FocusArea = {
+  _id: Id<'focusAreas'>;
+  name: string;
+  description?: string;
+  group: string;
+};
+
+type FocusAreasGrouped = Record<string, FocusArea[]>;
 
 export default function OnboardingPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const user = useQuery(api.users.current);
+  const focusAreasGrouped = useQuery(api.focusAreas.listActiveGrouped) as FocusAreasGrouped | undefined;
   const completeOnboarding = useMutation(api.users.completeOnboarding);
-  const [currentStep, setCurrentStep] = useState<OnboardingStep>('team');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [focusAreaIds, setFocusAreaIds] = useState<Id<'focusAreas'>[]>([]);
 
-  const [formData, setFormData] = useState({
-    teamId: undefined as Id<"teams"> | undefined,
-    focusAreaIds: [] as Id<"focusAreas">[],
-  });
-
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push('/sign-in');
-    }
-  }, [isAuthenticated, authLoading, router]);
+  const selectedFocusAreas = useMemo<FocusArea[]>(() => {
+    if (!focusAreasGrouped) return [];
+    return Object.values(focusAreasGrouped)
+      .flat()
+      .filter((area) => focusAreaIds.includes(area._id));
+  }, [focusAreasGrouped, focusAreaIds]);
 
   useEffect(() => {
     if (user?.onboardingCompleted) {
@@ -34,12 +42,15 @@ export default function OnboardingPage() {
     }
   }, [user, router]);
 
+  const canProceed = focusAreaIds.length > 0;
+
   const handleComplete = async () => {
+    if (!canProceed) return;
+
     setIsSubmitting(true);
     try {
       await completeOnboarding({
-        teamId: formData.teamId,
-        focusAreaIds: formData.focusAreaIds,
+        focusAreaIds,
       });
       router.push('/');
     } catch (error) {
@@ -57,99 +68,54 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl bg-white rounded-lg shadow-sm border border-zinc-200 p-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-zinc-900">Welcome to Garden</h1>
-          <p className="text-zinc-600 mt-2">Let&apos;s set up your profile</p>
-        </div>
+    <div className="min-h-screen bg-gradient-to-b from-zinc-50 to-white flex items-center justify-center px-4 py-12">
+      <Card className="w-full max-w-3xl border border-zinc-200">
+        <CardHeader className="border-b border-zinc-100">
+          <CardTitle className="text-2xl text-zinc-900">Choose your focus areas</CardTitle>
+          <CardDescription className="mt-2 text-base">
+            To personalize your garden, pick at least one domain that best represents the problems you&apos;re interested in.
+          </CardDescription>
+        </CardHeader>
 
-        <div className="flex items-center gap-2 mb-8">
-          <StepIndicator step={1} label="Team" active={currentStep === 'team'} completed={currentStep !== 'team'} />
-          <div className="flex-1 h-px bg-zinc-200" />
-          <StepIndicator step={2} label="Interests" active={currentStep === 'interests'} completed={currentStep === 'profile'} />
-          <div className="flex-1 h-px bg-zinc-200" />
-          <StepIndicator step={3} label="Profile" active={currentStep === 'profile'} completed={false} />
-        </div>
+        <CardContent className="space-y-8">
+          <FocusAreaPicker
+            focusAreasGrouped={focusAreasGrouped}
+            selectedFocusAreas={focusAreaIds}
+            onSelectionChange={setFocusAreaIds}
+          />
 
-        {currentStep === 'team' && (
-          <div>
-            <h2 className="text-lg font-medium mb-4">Select Your Team</h2>
-            <p className="text-zinc-600 mb-6">TODO: Team selection/creation form</p>
-            <button
-              onClick={() => setCurrentStep('interests')}
-              className="px-4 py-2 bg-zinc-900 text-white rounded hover:bg-zinc-800"
-            >
-              Next
-            </button>
-          </div>
-        )}
-
-        {currentStep === 'interests' && (
-          <div>
-            <h2 className="text-lg font-medium mb-4">Choose Your Interests</h2>
-            <p className="text-zinc-600 mb-6">TODO: Focus areas selection</p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setCurrentStep('team')}
-                className="px-4 py-2 border border-zinc-300 rounded hover:bg-zinc-50"
-              >
-                Back
-              </button>
-              <button
-                onClick={() => setCurrentStep('profile')}
-                className="px-4 py-2 bg-zinc-900 text-white rounded hover:bg-zinc-800"
-              >
-                Next
-              </button>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium text-zinc-700">Your selections</h3>
+              {selectedFocusAreas.length > 0 && (
+                <span className="text-xs text-zinc-500">{selectedFocusAreas.length} selected</span>
+              )}
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4">
+              {selectedFocusAreas.length > 0 ? (
+                <FocusAreaBadges focusAreas={selectedFocusAreas} className="flex-wrap gap-2" />
+              ) : (
+                <p className="text-sm text-zinc-500">
+                  You haven&apos;t selected any focus areas yet.
+                </p>
+              )}
             </div>
           </div>
-        )}
 
-        {currentStep === 'profile' && (
-          <div>
-            <h2 className="text-lg font-medium mb-4">Complete Your Profile</h2>
-            <p className="text-zinc-600 mb-6">TODO: Additional profile fields</p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setCurrentStep('interests')}
-                className="px-4 py-2 border border-zinc-300 rounded hover:bg-zinc-50"
-                disabled={isSubmitting}
-              >
-                Back
-              </button>
-              <button
-                onClick={handleComplete}
-                disabled={isSubmitting}
-                className="px-4 py-2 bg-zinc-900 text-white rounded hover:bg-zinc-800 disabled:opacity-50"
-              >
-                {isSubmitting ? 'Completing...' : 'Complete Setup'}
-              </button>
+          {!canProceed && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              Select at least one focus area to continue.
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </CardContent>
+
+        <CardFooter className="justify-end border-t border-zinc-100">
+          <Button onClick={handleComplete} disabled={isSubmitting || !canProceed}>
+            {isSubmitting ? 'Completing...' : 'Complete setup'}
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 }
 
-function StepIndicator({ step, label, active, completed }: {
-  step: number;
-  label: string;
-  active: boolean;
-  completed: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className={`
-        w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium
-        ${active ? 'bg-zinc-900 text-white' : completed ? 'bg-zinc-200 text-zinc-600' : 'bg-zinc-100 text-zinc-400'}
-      `}>
-        {step}
-      </div>
-      <span className={`text-sm ${active ? 'text-zinc-900 font-medium' : 'text-zinc-500'}`}>
-        {label}
-      </span>
-    </div>
-  );
-}
