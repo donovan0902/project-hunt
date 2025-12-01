@@ -63,9 +63,18 @@ export default defineSchema({
     teamId: v.optional(v.id("teams")),
     // this is the user id from workos for easier linking to workos (eg. for workos widgets that need to know the user id)
     workosUserId: v.string(),
+    onboardingCompleted: v.boolean(),
   })
     .index("by_tokenIdentifier", ["tokenIdentifier"])
     .index("by_teamId", ["teamId"]),
+  userFocusAreas: defineTable({
+    userId: v.id("users"),
+    focusAreaId: v.id("focusAreas"),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_focus_area", ["focusAreaId"])
+    .index("by_user_and_focus", ["userId", "focusAreaId"]),
   teams: defineTable({
     name: v.string(),
     description: v.optional(v.string()),

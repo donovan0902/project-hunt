@@ -4,7 +4,7 @@ import "./globals.css";
 import { ConvexClientProvider } from "@/components/ConvexClientProvider";
 import { Header } from "@/components/header";
 import { WorkOsWidgets } from "@workos-inc/widgets";
-import UserGate from "@/components/UserGate";
+import { UserStoreProvider } from "@/components/UserStoreProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,9 +35,9 @@ export default function RootLayout({
           <ConvexClientProvider>
             <WorkOsWidgets>
               <Header />
-                <UserGate>
+                <UserStoreProvider>
                   {children}
-                </UserGate>
+                </UserStoreProvider>
             </WorkOsWidgets>
           </ConvexClientProvider>
       </body>

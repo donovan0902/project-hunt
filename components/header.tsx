@@ -8,7 +8,6 @@ import { useAuth } from '@workos-inc/authkit-nextjs/components';
 import Image from "next/image";
 import { signOut } from "@workos-inc/authkit-nextjs";
 import { LogOut } from "lucide-react";
-import { InviteUserButton } from "@/components/InviteUserButton";
 
 
 export function Header() {
@@ -49,7 +48,6 @@ export function Header() {
           </Unauthenticated>
 
           <Authenticated>
-            <InviteUserButton />
             <Link href="/my-projects">
               <Button size="sm" variant="ghost">
                 My Projects
