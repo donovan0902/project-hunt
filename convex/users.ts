@@ -117,3 +117,21 @@ export async function getCurrentUser(ctx: QueryCtx) {
 //     .withIndex("by_tokenIdentifier", (q) => q.eq("tokenIdentifier", tokenIdentifier))
 //     .unique();
 // }
+
+export const completeOnboarding = mutation({
+  args: {
+    teamId: v.optional(v.id("teams")),
+    focusAreaIds: v.array(v.id("focusAreas")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+
+    await ctx.db.patch(user._id, {
+      onboardingCompleted: true,
+      teamId: args.teamId,
+      focusAreaIds: args.focusAreaIds,
+    });
+
+    return { success: true };
+  },
+});
