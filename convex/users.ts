@@ -118,6 +118,26 @@ export async function getCurrentUser(ctx: QueryCtx) {
 //     .unique();
 // }
 
+// Get focus areas for a specific user
+export const getUserFocusAreas = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const userFocusAreas = await ctx.db
+      .query("userFocusAreas")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    // Fetch the actual focus area details
+    const focusAreas = await Promise.all(
+      userFocusAreas.map(async (ufa) => {
+        return await ctx.db.get(ufa.focusAreaId);
+      })
+    );
+
+    return focusAreas.filter((fa) => fa !== null);
+  },
+});
+
 export const completeOnboarding = mutation({
   args: {
     teamId: v.optional(v.id("teams")),
@@ -126,11 +146,23 @@ export const completeOnboarding = mutation({
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
 
+    // Update user with team and mark onboarding as completed
     await ctx.db.patch(user._id, {
       onboardingCompleted: true,
       teamId: args.teamId,
-      focusAreaIds: args.focusAreaIds,
     });
+
+    // Create userFocusArea relationships in junction table
+    const createdAt = Date.now();
+    await Promise.all(
+      args.focusAreaIds.map((focusAreaId) =>
+        ctx.db.insert("userFocusAreas", {
+          userId: user._id,
+          focusAreaId,
+          createdAt,
+        })
+      )
+    );
 
     return { success: true };
   },
