@@ -54,24 +54,30 @@ export function FocusAreaPicker({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          className="w-full justify-between h-auto min-h-9 py-2"
+        <button
+          type="button"
+          aria-label="Select focus areas"
+          className={cn(
+            "flex w-full items-center justify-between gap-2 rounded-md border border-input bg-white px-3 py-2 text-sm text-zinc-900 shadow-xs transition-[color,box-shadow]",
+            "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-zinc-900/40 focus-visible:border-zinc-900",
+            "disabled:cursor-not-allowed disabled:opacity-50"
+          )}
         >
-          <span className="text-left truncate">
-            {selectedFocusAreas.length === 0 ? (
-              <span className="text-zinc-500">Select focus areas...</span>
-            ) : (
-              <span className="text-zinc-900">
-                {selectedFocusAreas.length} selected
-              </span>
+          <span
+            className={cn(
+              "text-left truncate",
+              selectedFocusAreas.length === 0 && "text-muted-foreground"
             )}
+          >
+            {selectedFocusAreas.length === 0
+              ? "Select focus areas..."
+              : `${selectedFocusAreas.length} selected`}
           </span>
-          <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
-        </Button>
+          <ChevronDown className="h-4 w-4 shrink-0 text-zinc-400" />
+        </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[800px] max-h-[480px] overflow-y-auto p-0"
+        className="w-[800px] max-h-[480px] overflow-y-auto p-0 border border-zinc-200 shadow-lg"
         align="start"
       >
         {/* Header with clear button */}

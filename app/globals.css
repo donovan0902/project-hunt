@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /* Provides styles for Radix Themes components and its theming API */
 @import '@radix-ui/themes/styles.css';

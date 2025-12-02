@@ -9,6 +9,13 @@ import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useDropzone } from "react-dropzone";
 import { Upload, Info } from "lucide-react";
 import { SimilarProjectsPreview } from "@/components/SimilarProjectsPreview";
@@ -211,15 +218,18 @@ export default function SubmitProject() {
                   </div>
                 </div>
               </div>
-              <select
-                id="readinessStatus"
+              <Select
                 value={selectedReadinessStatus}
-                onChange={(e) => setSelectedReadinessStatus(e.target.value as "in_progress" | "ready_to_use")}
-                className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                onValueChange={(value: "in_progress" | "ready_to_use") => setSelectedReadinessStatus(value)}
               >
-                <option value="in_progress">In Progress</option>
-                <option value="ready_to_use">Ready to Use</option>
-              </select>
+                <SelectTrigger id="readinessStatus" className="w-full">
+                  <SelectValue placeholder="Select readiness status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="ready_to_use">Ready to Use</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
