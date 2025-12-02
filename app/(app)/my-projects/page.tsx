@@ -158,10 +158,14 @@ function ProjectCard({ project }: { project: Project }) {
               By <span className="font-medium text-zinc-900">{project.creatorName || "Unknown User"}</span>
             </span>
           </span>
-          <Separator orientation="vertical" className="h-5" />
-          <span>
-            Team <span className="font-medium text-zinc-900">{project.team}</span>
-          </span>
+          {project.team && (
+            <>
+              <Separator orientation="vertical" className="h-5" />
+              <span>
+                Team <span className="font-medium text-zinc-900">{project.team}</span>
+              </span>
+            </>
+          )}
         </div>
       </div>
     </div>
