@@ -30,6 +30,7 @@ export default function SubmitProject() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [selectedFocusAreas, setSelectedFocusAreas] = useState<Id<"focusAreas">[]>([]);
+  const [selectedReadinessStatus, setSelectedReadinessStatus] = useState<"in_progress" | "ready_to_use">("in_progress");
 
   const { getRootProps, getInputProps, fileRejections, isDragActive } = useDropzone({
     accept: {
@@ -63,6 +64,7 @@ export default function SubmitProject() {
         headline: formData.headline || undefined,
         link: formData.link || undefined,
         focusAreaIds: selectedFocusAreas,
+        readinessStatus: selectedReadinessStatus,
       });
 
       // Upload and add media files if any are selected
@@ -191,6 +193,25 @@ export default function SubmitProject() {
                 selectedFocusAreas={selectedFocusAreas}
                 onSelectionChange={setSelectedFocusAreas}
               />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="readinessStatus" className="text-sm font-medium text-zinc-900">
+                Readiness Status
+              </label>
+              <select
+                id="readinessStatus"
+                value={selectedReadinessStatus}
+                onChange={(e) => setSelectedReadinessStatus(e.target.value as "in_progress" | "ready_to_use")}
+                className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900"
+              >
+                <option value="in_progress">In Progress</option>
+                <option value="ready_to_use">Ready to Use</option>
+              </select>
+              <div className="text-xs text-zinc-500 space-y-1">
+                <p><strong>In Progress:</strong> This project is still being built. Nothing may be functional yet.</p>
+                <p><strong>Ready to Use:</strong> This tool is stable and safe for others to use today.</p>
+              </div>
             </div>
 
             <div className="space-y-2">

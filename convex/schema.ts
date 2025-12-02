@@ -14,6 +14,7 @@ export default defineSchema({
     allFields: v.optional(v.string()),
     link: v.optional(v.string()),
     focusAreaIds: v.array(v.id("focusAreas")),
+    readinessStatus: v.optional(v.union(v.literal("in_progress"), v.literal("ready_to_use"))),
   })
     .searchIndex("allFields", { searchField: "allFields" })
     .index("by_entryId", ["entryId"])

@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { MessageCircle } from "lucide-react";
 import { FocusAreaBadges } from "@/components/FocusAreaBadges";
+import { ReadinessBadge } from "@/components/ReadinessBadge";
 
 type FocusArea = {
   _id: Id<"focusAreas">;
@@ -33,6 +34,7 @@ type Project = {
   creatorName: string;
   creatorAvatar: string;
   focusAreas: FocusArea[];
+  readinessStatus?: "in_progress" | "ready_to_use";
 };
 
 type NewestProject = {
@@ -200,7 +202,10 @@ function ProjectRow({
     >
       <div className="min-w-0 space-y-3">
         <div className="min-w-0">
-          <h3 className="text-xl font-semibold text-zinc-900">{project.name}</h3>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-xl font-semibold text-zinc-900">{project.name}</h3>
+            <ReadinessBadge status={project.readinessStatus} />
+          </div>
           {project.headline && (
             <p className="mt-1 text-sm text-zinc-500 break-words">
               {project.headline}
