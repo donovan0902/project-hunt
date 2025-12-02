@@ -261,10 +261,14 @@ function ProjectRow({
             By <span className="font-medium text-zinc-900">{project.creatorName || "Unknown User"}</span>
           </span>
         </span>
-        <span className="text-zinc-300">•</span>
-        <span className="whitespace-nowrap">
-          Team <span className="font-medium text-zinc-900">{project.team}</span>
-        </span>
+        {project.team && (
+          <>
+            <span className="text-zinc-300">•</span>
+            <span className="whitespace-nowrap">
+              Team <span className="font-medium text-zinc-900">{project.team}</span>
+            </span>
+          </>
+        )}
         {project.focusAreas.length > 0 && (
           <>
             <span className="text-zinc-300">•</span>

@@ -1,4 +1,9 @@
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type ReadinessStatus = "in_progress" | "ready_to_use";
 
@@ -9,19 +14,25 @@ interface ReadinessBadgeProps {
 
 export function ReadinessBadge({ status, className }: ReadinessBadgeProps) {
   const effectiveStatus = status ?? "in_progress";
-
-  if (effectiveStatus === "ready_to_use") {
-    return (
-      <Badge className={`bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 ${className ?? ""}`}>
-        Ready to Use
-      </Badge>
-    );
-  }
+  const description = getReadinessStatusDescription(effectiveStatus);
 
   return (
-    <Badge className={`bg-zinc-100 text-zinc-700 border-zinc-200 hover:bg-zinc-100 ${className ?? ""}`}>
-      In Progress
-    </Badge>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {effectiveStatus === "ready_to_use" ? (
+          <Badge className={`bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-50 cursor-help ${className ?? ""}`}>
+            Ready to Use
+          </Badge>
+        ) : (
+          <Badge className={`bg-zinc-100 text-zinc-700 border-zinc-200 hover:bg-zinc-50 cursor-help ${className ?? ""}`}>
+            In Progress
+          </Badge>
+        )}
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs">
+        <p className="text-xs">{description}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
