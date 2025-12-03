@@ -5,7 +5,6 @@ import { Authenticated, Unauthenticated, AuthLoading } from "convex/react";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/SearchBar";
 import { useAuth } from '@workos-inc/authkit-nextjs/components';
-import Image from "next/image";
 import { signOut } from "@workos-inc/authkit-nextjs";
 import { LogOut } from "lucide-react";
 
@@ -58,19 +57,10 @@ export function Header() {
                 Submit Project
               </Button>
             </Link>
-            {/* <UserButton
-              appearance={{
-                elements: {
-                  avatarBox: "h-9 w-9",
-                },
-              }}
-            /> */}
-            {/* user profile picture */}
-            <div className="h-9 w-9 rounded-full bg-zinc-200">
-              {user?.profilePictureUrl && (
-                <Image src={user.profilePictureUrl} alt={user?.firstName ?? ""} width={36} height={36} />
-              )}
-            </div>
+            {/* User greeting */}
+            <span className="hidden sm:inline-block text-sm text-zinc-600 font-medium">
+              Hi, {user?.firstName ?? "there"}
+            </span>
 
             <Button size="sm" variant="ghost" onClick={() => signOut()}>
               <LogOut className="h-4 w-4" />

@@ -1,40 +1,23 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useConvexAuth } from 'convex/react';
 import { Id } from '@/convex/_generated/dataModel';
 import { FocusAreaPicker } from '@/components/FocusAreaPicker';
-import { FocusAreaBadges } from '@/components/FocusAreaBadges';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
-type FocusArea = {
-  _id: Id<'focusAreas'>;
-  name: string;
-  description?: string;
-  group: string;
-};
-
-type FocusAreasGrouped = Record<string, FocusArea[]>;
-
 export default function OnboardingPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const { isLoading: authLoading } = useConvexAuth();
   const user = useQuery(api.users.current);
-  const focusAreasGrouped = useQuery(api.focusAreas.listActiveGrouped) as FocusAreasGrouped | undefined;
+  const focusAreasGrouped = useQuery(api.focusAreas.listActiveGrouped);
   const completeOnboarding = useMutation(api.users.completeOnboarding);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [focusAreaIds, setFocusAreaIds] = useState<Id<'focusAreas'>[]>([]);
-
-  const selectedFocusAreas = useMemo<FocusArea[]>(() => {
-    if (!focusAreasGrouped) return [];
-    return Object.values(focusAreasGrouped)
-      .flat()
-      .filter((area) => focusAreaIds.includes(area._id));
-  }, [focusAreasGrouped, focusAreaIds]);
 
   useEffect(() => {
     if (user?.onboardingCompleted) {
@@ -77,30 +60,12 @@ export default function OnboardingPage() {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-8">
+        <CardContent className="space-y-6">
           <FocusAreaPicker
             focusAreasGrouped={focusAreasGrouped}
             selectedFocusAreas={focusAreaIds}
             onSelectionChange={setFocusAreaIds}
           />
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-zinc-700">Your selections</h3>
-              {selectedFocusAreas.length > 0 && (
-                <span className="text-xs text-zinc-500">{selectedFocusAreas.length} selected</span>
-              )}
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4">
-              {selectedFocusAreas.length > 0 ? (
-                <FocusAreaBadges focusAreas={selectedFocusAreas} className="flex-wrap gap-2" />
-              ) : (
-                <p className="text-sm text-zinc-500">
-                  You haven&apos;t selected any focus areas yet.
-                </p>
-              )}
-            </div>
-          </div>
 
           {!canProceed && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">

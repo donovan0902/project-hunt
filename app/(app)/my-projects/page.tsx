@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
+import { Pencil } from "lucide-react";
 
 type Project = {
   _id: Id<"projects">;
@@ -139,11 +140,11 @@ function ProjectCard({ project }: { project: Project }) {
               <span>{project.upvotes}</span>
             </div>
             <Button
-              variant="outline"
-              size="sm"
+              variant="ghost"
+              size="icon"
               onClick={handleEdit}
             >
-              Edit
+              <Pencil className="h-4 w-4" />
             </Button>
           </div>
         </div>
