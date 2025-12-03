@@ -44,3 +44,5 @@ next-env.d.ts
 /.clerk/
 
 /convex/_generated/
+
+.env.local
