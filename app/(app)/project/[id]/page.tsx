@@ -20,6 +20,7 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { FocusAreaBadges } from "@/components/FocusAreaBadges";
+import { ReadinessBadge } from "@/components/ReadinessBadge";
 import Link from "next/link";
 
 function MediaCarousel({
@@ -214,19 +215,27 @@ export default function ProjectPage({
                 <h1 className="text-4xl font-bold text-zinc-900">
                   {project.name}
                 </h1>
-                {projectLink && (
-                  <a
-                    href={projectLink.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-900 hover:underline"
-                  >
-                    {projectLink.label}
-                  </a>
-                )}
+                <ReadinessBadge status={project.readinessStatus} />
               </div>
               {project.headline && (
                 <p className="mt-2 text-lg text-zinc-600">{project.headline}</p>
+              )}
+              {projectLink && (
+                <p className="mt-3">
+                  <Button
+                    variant="link"
+                    asChild
+                    className="h-auto px-0 text-muted-foreground hover:text-foreground"
+                  >
+                    <a
+                      href={projectLink.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {projectLink.label}
+                    </a>
+                  </Button>
+                </p>
               )}
             </div>
             {isAuthenticated ? (
@@ -272,13 +281,17 @@ export default function ProjectPage({
                 </span>
               </span>
             </span>
-            <span className="text-zinc-300">•</span>
-            <span className="text-zinc-500 whitespace-nowrap">
-              Team{" "}
-              <span className="font-medium text-zinc-900">
-                {project.team}
-              </span>
-            </span>
+            {project.team && (
+              <>
+                <span className="text-zinc-300">•</span>
+                <span className="text-zinc-500 whitespace-nowrap">
+                  Team{" "}
+                  <span className="font-medium text-zinc-900">
+                    {project.team}
+                  </span>
+                </span>
+              </>
+            )}
             {project.focusAreas?.length ? (
               <>
                 <span className="text-zinc-300">•</span>

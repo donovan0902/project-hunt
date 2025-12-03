@@ -9,10 +9,22 @@ import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useDropzone } from "react-dropzone";
-import { Upload } from "lucide-react";
+import { Upload, Info } from "lucide-react";
 import { SimilarProjectsPreview } from "@/components/SimilarProjectsPreview";
 import { FocusAreaPicker } from "@/components/FocusAreaPicker";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function SubmitProject() {
   const router = useRouter();
@@ -30,6 +42,7 @@ export default function SubmitProject() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [selectedFocusAreas, setSelectedFocusAreas] = useState<Id<"focusAreas">[]>([]);
+  const [selectedReadinessStatus, setSelectedReadinessStatus] = useState<"in_progress" | "ready_to_use">("in_progress");
 
   const { getRootProps, getInputProps, fileRejections, isDragActive } = useDropzone({
     accept: {
@@ -63,6 +76,7 @@ export default function SubmitProject() {
         headline: formData.headline || undefined,
         link: formData.link || undefined,
         focusAreaIds: selectedFocusAreas,
+        readinessStatus: selectedReadinessStatus,
       });
 
       // Upload and add media files if any are selected
@@ -191,6 +205,37 @@ export default function SubmitProject() {
                 selectedFocusAreas={selectedFocusAreas}
                 onSelectionChange={setSelectedFocusAreas}
               />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <label htmlFor="readinessStatus" className="text-sm font-medium text-zinc-900">
+                  Readiness Status
+                </label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-zinc-400 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <div className="space-y-2 text-xs">
+                      <p><strong>In Progress:</strong> This project is still being built. Nothing may be functional yet.</p>
+                      <p><strong>Ready to Use:</strong> This tool is stable and safe for others to use today.</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <Select
+                value={selectedReadinessStatus}
+                onValueChange={(value: "in_progress" | "ready_to_use") => setSelectedReadinessStatus(value)}
+              >
+                <SelectTrigger id="readinessStatus" className="w-full">
+                  <SelectValue placeholder="Select readiness status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="ready_to_use">Ready to Use</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">

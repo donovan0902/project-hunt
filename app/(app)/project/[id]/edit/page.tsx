@@ -10,8 +10,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Id } from "@/convex/_generated/dataModel";
 import { useDropzone } from "react-dropzone";
-import { Upload } from "lucide-react";
+import { Upload, Info } from "lucide-react";
 import { FocusAreaPicker } from "@/components/FocusAreaPicker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 function ExistingMediaThumbnail({
   media,
@@ -87,6 +94,7 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [selectedFocusAreas, setSelectedFocusAreas] = useState<Id<"focusAreas">[]>([]);
+  const [selectedReadinessStatus, setSelectedReadinessStatus] = useState<"in_progress" | "ready_to_use">("in_progress");
 
   const { getRootProps, getInputProps, fileRejections, isDragActive } = useDropzone({
     accept: {
@@ -125,6 +133,7 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
         link: project.link || "",
       });
       setSelectedFocusAreas(project.focusAreaIds);
+      setSelectedReadinessStatus(project.readinessStatus ?? "in_progress");
       setIsLoading(false);
     }
   }, [project]);
@@ -142,6 +151,7 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
         headline: formData.headline || undefined,
         link: formData.link || undefined,
         focusAreaIds: selectedFocusAreas,
+        readinessStatus: selectedReadinessStatus,
       });
 
       // Upload and add new media files if any are selected
@@ -275,6 +285,36 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
                 selectedFocusAreas={selectedFocusAreas}
                 onSelectionChange={setSelectedFocusAreas}
               />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <label htmlFor="readinessStatus" className="text-sm font-medium text-zinc-900">
+                  Readiness Status
+                </label>
+                <div className="group relative">
+                  <Info className="h-4 w-4 text-zinc-400 cursor-help" />
+                  <div className="invisible group-hover:visible absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 rounded-lg border border-zinc-200 bg-white p-3 shadow-lg z-10">
+                    <div className="space-y-2 text-xs text-zinc-600">
+                      <p><strong className="text-zinc-900">In Progress:</strong> This project is still being built. Nothing may be functional yet.</p>
+                      <p><strong className="text-zinc-900">Ready to Use:</strong> This tool is stable and safe for others to use today.</p>
+                    </div>
+                    <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-white"></div>
+                  </div>
+                </div>
+              </div>
+              <Select
+                value={selectedReadinessStatus}
+                onValueChange={(value: "in_progress" | "ready_to_use") => setSelectedReadinessStatus(value)}
+              >
+                <SelectTrigger id="readinessStatus" className="w-full">
+                  <SelectValue placeholder="Select readiness status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="ready_to_use">Ready to Use</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">

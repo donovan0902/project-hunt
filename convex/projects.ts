@@ -136,6 +136,7 @@ export const create = action({
     headline: v.optional(v.string()),
     link: v.optional(v.string()),
     focusAreaIds: v.array(v.id("focusAreas")),
+    readinessStatus: v.union(v.literal("in_progress"), v.literal("ready_to_use")),
   },
   handler: async (ctx, args): Promise<{
     projectId: Id<"projects">;
@@ -162,6 +163,7 @@ export const create = action({
         headline: args.headline,
         link: args.link,
         focusAreaIds: args.focusAreaIds,
+        readinessStatus: args.readinessStatus,
         status: "pending" as const,
         userId: user._id,
       }
@@ -219,6 +221,7 @@ export const createProject = internalMutation({
     headline: v.optional(v.string()),
     link: v.optional(v.string()),
     focusAreaIds: v.array(v.id("focusAreas")),
+    readinessStatus: v.union(v.literal("in_progress"), v.literal("ready_to_use")),
   },
   handler: async (ctx, args) => {
     let teamId: Id<"teams"> | undefined = undefined;
@@ -238,6 +241,7 @@ export const createProject = internalMutation({
       headline: args.headline,
       link: args.link,
       focusAreaIds: args.focusAreaIds,
+      readinessStatus: args.readinessStatus,
     });
   },
 });
@@ -306,6 +310,7 @@ export const populateProjectDetails = internalQuery({
         allFields: v.optional(v.string()),
         link: v.optional(v.string()),
         focusAreaIds: v.array(v.id("focusAreas")),
+        readinessStatus: v.optional(v.union(v.literal("in_progress"), v.literal("ready_to_use"))),
       })
     ),
   },
@@ -381,6 +386,7 @@ export const updateProjectFields = internalMutation({
     headline: v.optional(v.string()),
     link: v.optional(v.string()),
     focusAreaIds: v.array(v.id("focusAreas")),
+    readinessStatus: v.union(v.literal("in_progress"), v.literal("ready_to_use")),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.projectId, {
@@ -389,6 +395,7 @@ export const updateProjectFields = internalMutation({
       headline: args.headline,
       link: args.link,
       focusAreaIds: args.focusAreaIds,
+      readinessStatus: args.readinessStatus,
     });
   },
 });
@@ -401,6 +408,7 @@ export const updateProject = action({
     headline: v.optional(v.string()),
     link: v.optional(v.string()),
     focusAreaIds: v.array(v.id("focusAreas")),
+    readinessStatus: v.union(v.literal("in_progress"), v.literal("ready_to_use")),
   },
   handler: async (ctx, args) => {
     const user = await ctx.runQuery(internal.projects.getCurrentUserInternal, {});
@@ -427,6 +435,7 @@ export const updateProject = action({
       headline: args.headline,
       link: args.link,
       focusAreaIds: args.focusAreaIds,
+      readinessStatus: args.readinessStatus,
     });
 
     // Update the RAG index

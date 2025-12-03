@@ -121,8 +121,12 @@ export function SimilarProjectsPreview({
                       {project.summary}
                     </p>
                     <div className="flex items-center gap-3 text-xs text-zinc-500">
-                      <span>{project.team}</span>
-                      <span>•</span>
+                      {project.team && (
+                        <>
+                          <span>{project.team}</span>
+                          <span>•</span>
+                        </>
+                      )}
                       <span>{project.upvotes} upvotes</span>
                     </div>
                   </div>

@@ -7,6 +7,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { ReadinessBadge } from "@/components/ReadinessBadge";
 
 type Project = {
   _id: Id<"projects">;
@@ -17,6 +18,7 @@ type Project = {
   status: "pending" | "active";
   creatorName: string;
   creatorAvatar: string;
+  readinessStatus?: "in_progress" | "ready_to_use";
 };
 
 export default function MyProjectsPage() {
@@ -118,7 +120,7 @@ function ProjectCard({ project }: { project: Project }) {
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-lg font-semibold text-zinc-900">
                 {project.name}
               </h3>
@@ -127,6 +129,7 @@ function ProjectCard({ project }: { project: Project }) {
                   Pending
                 </span>
               )}
+              <ReadinessBadge status={project.readinessStatus} />
             </div>
             <p className="mt-1 text-sm text-zinc-500">{project.summary}</p>
           </div>
@@ -155,10 +158,14 @@ function ProjectCard({ project }: { project: Project }) {
               By <span className="font-medium text-zinc-900">{project.creatorName || "Unknown User"}</span>
             </span>
           </span>
-          <Separator orientation="vertical" className="h-5" />
-          <span>
-            Team <span className="font-medium text-zinc-900">{project.team}</span>
-          </span>
+          {project.team && (
+            <>
+              <Separator orientation="vertical" className="h-5" />
+              <span>
+                Team <span className="font-medium text-zinc-900">{project.team}</span>
+              </span>
+            </>
+          )}
         </div>
       </div>
     </div>
