@@ -217,11 +217,11 @@ function ProjectRow({
         <Button
           variant="outline"
           onClick={handleCommentClick}
-          className="flex min-h-[3.25rem] min-w-[4rem] flex-col items-center justify-center gap-1 rounded-2xl border-zinc-200 px-3 py-3 text-sm font-semibold leading-tight hover:!bg-background hover:!text-foreground hover:ring-2 hover:ring-accent hover:ring-offset-2 transition-all"
+          className="flex h-11 w-12 flex-col items-center justify-center gap-0.5 rounded-xl border-zinc-200 px-2 py-2 text-xs font-semibold leading-tight hover:!bg-background hover:!text-foreground hover:ring-2 hover:ring-accent hover:ring-offset-2 transition-all"
           aria-label={`View ${project.commentCount} comments`}
         >
-          <MessageCircle className="h-4 w-4" aria-hidden="true" />
-          <span className="text-sm font-semibold">{project.commentCount}</span>
+          <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" />
+          <span className="text-xs font-semibold">{project.commentCount}</span>
         </Button>
         <div>
           {isAuthenticated ? (
@@ -229,10 +229,10 @@ function ProjectRow({
               <Button
                 variant={project.hasUpvoted ? "default" : "outline"}
                 onClick={handleUpvoteClick}
-                className={`flex min-h-[3.25rem] min-w-[4rem] flex-col items-center justify-center gap-1 rounded-2xl px-3 py-3 text-sm font-semibold leading-tight hover:ring-2 hover:ring-accent hover:ring-offset-2 transition-all ${project.hasUpvoted ? "hover:!bg-primary hover:!text-primary-foreground" : "hover:!bg-background hover:!text-foreground"}`}
+                className={`flex h-11 w-12 flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-2 text-xs font-semibold leading-tight hover:ring-2 hover:ring-accent hover:ring-offset-2 transition-all ${project.hasUpvoted ? "hover:!bg-primary hover:!text-primary-foreground" : "hover:!bg-background hover:!text-foreground"}`}
               >
                 <span aria-hidden="true" className="text-inherit">↑</span>
-                <span className="text-sm font-semibold text-inherit">{project.upvotes}</span>
+                <span className="text-xs font-semibold text-inherit">{project.upvotes}</span>
               </Button>
             </motion.div>
           ) : (
@@ -240,11 +240,11 @@ function ProjectRow({
                 <Button
                   variant="outline"
                   onClick={(e) => e.stopPropagation()}
-                  className="flex min-h-[3.25rem] min-w-[4rem] flex-col items-center justify-center gap-1 rounded-2xl border-zinc-200 px-3 py-3 text-sm font-semibold leading-tight hover:!bg-background hover:!text-foreground hover:ring-2 hover:ring-accent hover:ring-offset-2 transition-all"
+                  className="flex h-11 w-12 flex-col items-center justify-center gap-0.5 rounded-xl border-zinc-200 px-2 py-2 text-xs font-semibold leading-tight hover:!bg-background hover:!text-foreground hover:ring-2 hover:ring-accent hover:ring-offset-2 transition-all"
                 >
                   <Link href="/sign-in">
                     <span aria-hidden="true" className="text-inherit">↑</span>
-                    <span className="text-sm font-semibold text-inherit">{project.upvotes}</span>
+                    <span className="text-xs font-semibold text-inherit">{project.upvotes}</span>
                   </Link>
                 </Button>
             </motion.div>
@@ -342,13 +342,13 @@ function NewestProjects() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 px-3">
         <h3 className="text-2xl font-semibold text-zinc-900">Newest projects</h3>
       </div>
 
       {!newestProjects ? (
         // Loading state
-        <div className="space-y-3">
+        <div className="space-y-3 px-3">
           {[...Array(3)].map((_, i) => (
             <div key={i} className="animate-pulse space-y-2">
               <div className="h-4 bg-zinc-200 rounded w-3/4"></div>
@@ -358,7 +358,7 @@ function NewestProjects() {
         </div>
       ) : newestProjects.length === 0 ? (
         // Empty state
-        <p className="text-sm text-zinc-500">No projects yet.</p>
+        <p className="text-sm text-zinc-500 px-3">No projects yet.</p>
       ) : (
         // Projects list
         <div className="flex flex-col gap-3">

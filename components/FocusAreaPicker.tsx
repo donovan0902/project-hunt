@@ -42,6 +42,15 @@ export function FocusAreaPicker({
     onSelectionChange([]);
   };
 
+  // Get selected focus area names from the grouped data
+  const getSelectedNames = (): string[] => {
+    if (!focusAreasGrouped) return [];
+    const allAreas = Object.values(focusAreasGrouped).flat();
+    return selectedFocusAreas
+      .map((id) => allAreas.find((area) => area._id === id)?.name)
+      .filter((name): name is string => !!name);
+  };
+
   if (!focusAreasGrouped) {
     return (
       <Button variant="outline" disabled className="w-full justify-between">
@@ -51,6 +60,8 @@ export function FocusAreaPicker({
     );
   }
 
+  const selectedNames = getSelectedNames();
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -58,21 +69,25 @@ export function FocusAreaPicker({
           type="button"
           aria-label="Select focus areas"
           className={cn(
-            "flex w-full items-center justify-between gap-2 rounded-md border border-input bg-white px-3 py-2 text-sm text-zinc-900 shadow-xs transition-[color,box-shadow]",
+            "flex w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-2 text-sm text-zinc-900 shadow-xs transition-[color,box-shadow]",
             "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-zinc-900/40 focus-visible:border-zinc-900",
             "disabled:cursor-not-allowed disabled:opacity-50"
           )}
         >
-          <span
-            className={cn(
-              "text-left truncate",
-              selectedFocusAreas.length === 0 && "text-muted-foreground"
-            )}
-          >
-            {selectedFocusAreas.length === 0
-              ? "Select focus areas..."
-              : `${selectedFocusAreas.length} selected`}
-          </span>
+          {selectedNames.length === 0 ? (
+            <span className="text-muted-foreground">Select focus areas...</span>
+          ) : (
+            <div className="flex flex-wrap gap-1 overflow-hidden">
+              {selectedNames.map((name) => (
+                <span
+                  key={name}
+                  className="inline-flex items-center rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-700"
+                >
+                  {name}
+                </span>
+              ))}
+            </div>
+          )}
           <ChevronDown className="h-4 w-4 shrink-0 text-zinc-400" />
         </button>
       </PopoverTrigger>

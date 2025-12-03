@@ -19,6 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 function ExistingMediaThumbnail({
   media,
@@ -238,9 +243,21 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="headline" className="text-sm font-medium text-zinc-900">
-                Headline <span className="text-xs text-zinc-500">(optional)</span>
-              </label>
+              <div className="flex items-center gap-2">
+                <label htmlFor="headline" className="text-sm font-medium text-zinc-900">
+                  Headline <span className="text-xs text-zinc-500">(optional)</span>
+                </label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-zinc-400 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-xs">
+                      People often decide in seconds whether they&apos;re interested. A great headline helps them understand your project at a glance and keeps them reading.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
               <Input
                 id="headline"
                 value={formData.headline}
@@ -277,9 +294,21 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-900">
-                Focus Areas
-              </label>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-zinc-900">
+                  Focus Areas
+                </label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-zinc-400 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-xs">
+                      These categories help organize the platform so people find projects relevant to their interests. Tag your project accurately so the right people discover it.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
               <FocusAreaPicker
                 focusAreasGrouped={focusAreasGrouped}
                 selectedFocusAreas={selectedFocusAreas}
