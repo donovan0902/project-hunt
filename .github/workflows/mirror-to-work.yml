@@ -1,0 +1,42 @@
+# .github/workflows/mirror-to-work.yml
+name: Mirror to work repo
+
+on:
+  push:
+    branches:
+      - main
+      - '**'   # mirror all branches on push
+  delete:
+    branches:
+      - '**'
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Clear default auth header for github.com
+        run: |
+          git config --local --unset-all http.https://github.com/.extraheader || true
+
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add work remote
+        run: |
+          git remote remove work || true
+          git remote add work "https://x-access-token:${{ secrets.MIRROR_TOKEN }}@github.com/donovan-liao_ahmprod/project-garden-mirror.git"
+          git remote -v
+
+      - name: Push all branches
+        run: git push --all work --verbose
+
+      - name: Push all tags
+        run: git push --tags work --verbose

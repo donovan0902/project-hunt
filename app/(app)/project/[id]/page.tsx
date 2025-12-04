@@ -22,6 +22,7 @@ import {
 import { FocusAreaBadges } from "@/components/FocusAreaBadges";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
 import Link from "next/link";
+import { Pencil } from "lucide-react";
 
 function MediaCarousel({
   mediaFiles,
@@ -204,11 +205,12 @@ export default function ProjectPage({
             <div className="relative flex-1">
               {isOwner && (
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => router.push(`/project/${id}/edit`)}
                   className="absolute -left-20 top-0"
+                  size="icon"
                 >
-                  Edit
+                  <Pencil className="h-4 w-4" />
                 </Button>
               )}
               <div className="flex flex-wrap items-center gap-3">
@@ -220,22 +222,30 @@ export default function ProjectPage({
               {project.headline && (
                 <p className="mt-2 text-lg text-zinc-600">{project.headline}</p>
               )}
-              {projectLink && (
-                <p className="mt-3">
-                  <Button
-                    variant="link"
-                    asChild
-                    className="h-auto px-0 text-muted-foreground hover:text-foreground"
-                  >
-                    <a
-                      href={projectLink.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
+              {(projectLink || (project.focusAreas && project.focusAreas.length > 0)) && (
+                <div className="mt-4 flex flex-wrap items-center gap-4">
+                  {projectLink && (
+                    <Button
+                      variant="link"
+                      asChild
+                      className="h-auto px-0 text-muted-foreground hover:text-foreground"
                     >
-                      {projectLink.label}
-                    </a>
-                  </Button>
-                </p>
+                      <a
+                        href={projectLink.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {projectLink.label}
+                      </a>
+                    </Button>
+                  )}
+                  {project.focusAreas && project.focusAreas.length > 0 && (
+                    <FocusAreaBadges
+                      focusAreas={project.focusAreas}
+                      className="text-sm"
+                    />
+                  )}
+                </div>
               )}
             </div>
             {isAuthenticated ? (
@@ -243,7 +253,7 @@ export default function ProjectPage({
                 <Button
                   variant={project.hasUpvoted ? "default" : "outline"}
                   onClick={handleUpvote}
-                  className={`rounded-full px-6 py-3 text-base font-semibold hover:ring-2 hover:ring-accent hover:ring-offset-2 transition-all ${project.hasUpvoted ? "!text-primary-foreground hover:!bg-primary hover:!text-primary-foreground" : "!text-foreground hover:!bg-background hover:!text-foreground"}`}
+                  className={`rounded-full px-4 py-2.5 text-sm font-semibold hover:ring-2 hover:ring-accent hover:ring-offset-2 transition-all ${project.hasUpvoted ? "!text-primary-foreground hover:!bg-primary hover:!text-primary-foreground" : "!text-foreground hover:!bg-background hover:!text-foreground"}`}
                 >
                   ↑ {project.upvotes}
                 </Button>
@@ -252,7 +262,7 @@ export default function ProjectPage({
               <motion.div whileTap={{ scale: 1.15, rotate: -3 }} transition={{ type: "spring", stiffness: 800, damping: 20 }}>
                   <Button
                     variant="outline"
-                    className="rounded-full border-zinc-200 px-6 py-3 text-base font-semibold !text-foreground hover:!bg-background hover:!text-foreground hover:ring-2 hover:ring-accent hover:ring-offset-2 transition-all"
+                    className="rounded-full border-zinc-200 px-4 py-2.5 text-sm font-semibold !text-foreground hover:!bg-background hover:!text-foreground hover:ring-2 hover:ring-accent hover:ring-offset-2 transition-all"
                     asChild
                   >
                     <Link href="/sign-in">
@@ -292,15 +302,6 @@ export default function ProjectPage({
                 </span>
               </>
             )}
-            {project.focusAreas?.length ? (
-              <>
-                <span className="text-zinc-300">•</span>
-                <FocusAreaBadges
-                  focusAreas={project.focusAreas}
-                  className="min-w-0 flex-1 text-sm"
-                />
-              </>
-            ) : null}
           </div>
 
           <div>
