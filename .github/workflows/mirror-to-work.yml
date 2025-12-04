@@ -21,9 +21,6 @@ jobs:
           # Fetch all history and all branches
           fetch-depth: 0
 
-      - name: Show git remotes
-        run: git remote -v
-
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
@@ -33,6 +30,10 @@ jobs:
         run: |
           git remote add work "https://x-access-token:${{ secrets.MIRROR_TOKEN }}@github.com/donovan-liao_ahmprod/project-garden-mirror.git"
 
+
+      - name: Show git remotes
+        run: git remote -v
+        
       - name: Push all branches
         run: |
           git push --all work
