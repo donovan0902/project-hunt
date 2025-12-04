@@ -14,15 +14,15 @@ jobs:
   mirror:
     runs-on: ubuntu-latest
 
-    steps:
-      - name: Show git remotes
-        run: git remote -v
-    
+    steps:    
       - name: Checkout source repository
         uses: actions/checkout@v4
         with:
           # Fetch all history and all branches
           fetch-depth: 0
+
+      - name: Show git remotes
+        run: git remote -v
 
       - name: Configure Git
         run: |
