@@ -29,6 +29,7 @@ import {
 export default function SubmitProject() {
   const router = useRouter();
   const createProject = useAction(api.projects.create);
+  const cancelProject = useAction(api.projects.cancelProject);
   const confirmProject = useMutation(api.projects.confirmProject);
   const generateUploadUrl = useMutation(api.projects.generateUploadUrl);
   const addMediaToProject = useMutation(api.projects.addMediaToProject);
@@ -66,7 +67,7 @@ export default function SubmitProject() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    
+    let createdProjectId: Id<"projects"> | null = null;
 
     try {
       // Create project first
@@ -78,6 +79,7 @@ export default function SubmitProject() {
         focusAreaIds: selectedFocusAreas,
         readinessStatus: selectedReadinessStatus,
       });
+      createdProjectId = result.projectId;
 
       // Upload and add media files if any are selected
       if (selectedFiles.length > 0) {
@@ -119,6 +121,13 @@ export default function SubmitProject() {
         router.push(`/submit/confirm?projectId=${result.projectId}`);
       }
     } catch (error) {
+      if (createdProjectId) {
+        try {
+          await cancelProject({ projectId: createdProjectId });
+        } catch (cancelError) {
+          console.error("Failed to clean up pending project:", cancelError);
+        }
+      }
       console.error("Failed to create project:", error);
       alert("Failed to submit project. Please try again.");
     } finally {
