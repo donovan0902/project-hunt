@@ -598,8 +598,17 @@ export const list = query({
       })
     );
 
-    // Sort by upvotes descending
-    return projectsWithCounts.sort((a, b) => b.upvotes - a.upvotes);
+    // Sort by engagement (upvotes + comments), then newest
+    return projectsWithCounts.sort((a, b) => {
+      const aScore = a.upvotes + a.commentCount;
+      const bScore = b.upvotes + b.commentCount;
+
+      if (bScore !== aScore) {
+        return bScore - aScore;
+      }
+
+      return b._creationTime - a._creationTime;
+    });
   },
 });
 
