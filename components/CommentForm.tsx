@@ -56,7 +56,7 @@ export function CommentForm({
           Sign in to join the discussion
         </p>
         <Button variant="outline" asChild>
-          <Link href="/sign-in">
+          <Link href="/sign-in" prefetch={false}>
             Sign In
           </Link>
         </Button>

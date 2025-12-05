@@ -35,11 +35,11 @@ export function Header() {
         <div className="flex items-center gap-3">
           <Unauthenticated>
             <Button size="sm" asChild>
-              <Link href="/sign-in">
+              <Link href="/sign-in" prefetch={false}>
                 Sign In
               </Link>
             </Button>
-            <Link href="/sign-up">
+            <Link href="/sign-up" prefetch={false}>
               <Button size="sm">
                 Sign Up
               </Button>
