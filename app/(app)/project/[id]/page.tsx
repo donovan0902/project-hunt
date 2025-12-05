@@ -265,7 +265,7 @@ export default function ProjectPage({
                     className="rounded-full border-zinc-200 px-4 py-2.5 text-sm font-semibold !text-foreground hover:!bg-background hover:!text-foreground hover:ring-2 hover:ring-accent hover:ring-offset-2 transition-all"
                     asChild
                   >
-                    <Link href="/sign-in">
+                    <Link href="/sign-in" prefetch={false}>
                     ↑ {project.upvotes}
                     </Link>
                   </Button>

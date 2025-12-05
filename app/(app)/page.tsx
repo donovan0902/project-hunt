@@ -156,7 +156,7 @@ function ShareProjectCallout() {
         </Authenticated>
         <Unauthenticated>
             <Button size="sm" className="whitespace-nowrap" asChild>
-              <Link href="/sign-in">
+              <Link href="/sign-in" prefetch={false}>
                 Submit a project
               </Link>
             </Button>
@@ -242,7 +242,7 @@ function ProjectRow({
                   onClick={(e) => e.stopPropagation()}
                   className="flex h-11 w-12 flex-col items-center justify-center gap-0.5 rounded-xl border-zinc-200 px-2 py-2 text-xs font-semibold leading-tight hover:!bg-background hover:!text-foreground hover:ring-2 hover:ring-accent hover:ring-offset-2 transition-all"
                 >
-                  <Link href="/sign-in">
+                  <Link href="/sign-in" prefetch={false}>
                     <span aria-hidden="true" className="text-inherit">↑</span>
                     <span className="text-xs font-semibold text-inherit">{project.upvotes}</span>
                   </Link>
