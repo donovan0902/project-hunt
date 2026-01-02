@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAction, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,12 @@ export function ChatInterface() {
   const [inputValue, setInputValue] = useState("");
   const [optimisticMessages, setOptimisticMessages] = useState<OptimisticMessage[]>([]);
 
+  // Cleanup optimistic messages on component unmount
+  useEffect(() => {
+    return () => {
+      setOptimisticMessages([]);
+    };
+  }, []);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
