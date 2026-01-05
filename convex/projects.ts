@@ -1590,11 +1590,10 @@ export const getProjectsByEntryIdsPublic = query({
     const mediaResults = await Promise.all(mediaQueries);
 
     // Build a map of project ID to first media file
-    const mediaMap = new Map<Id<"projects">, typeof mediaResults[0]>();
+    const mediaMap = new Map<Id<"projects">, Doc<"mediaFiles"> | null>();
     projects.forEach((project, index) => {
-      if (mediaResults[index]) {
-        mediaMap.set(project._id, mediaResults[index]);
-      }
+      const media = mediaResults[index] ?? null;
+      mediaMap.set(project._id, media);
     });
 
     // Enrich projects with preview media
