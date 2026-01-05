@@ -1590,6 +1590,7 @@ export const getProjectsByEntryIdsPublic = query({
     const mediaResults = await Promise.all(mediaQueries);
 
     // Build a map of project ID to first media file
+    // The index alignment between projects and mediaResults is guaranteed by map + Promise.all
     const mediaMap = new Map<Id<"projects">, Doc<"mediaFiles"> | null>();
     projects.forEach((project, index) => {
       const media = mediaResults[index] ?? null;
@@ -1600,6 +1601,8 @@ export const getProjectsByEntryIdsPublic = query({
     const enrichedProjects = await Promise.all(
       projects.map(async (project) => {
         const firstMedia = mediaMap.get(project._id);
+        
+        // Only process storage URL if media exists
         const previewMedia = firstMedia
           ? [
               {
