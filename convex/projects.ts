@@ -1566,25 +1566,41 @@ export const getProjectsByEntryIdsPublic = query({
     entryIds: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    const projects = await Promise.all(
-      args.entryIds.map(async (entryId) => {
-        const project = await ctx.db
-          .query("projects")
-          .withIndex("by_entryId", (q) => q.eq("entryId", entryId))
-          .filter((q) => q.eq(q.field("status"), "active"))
-          .first();
+    // Batch fetch all projects first
+    const projectQueries = args.entryIds.map((entryId) =>
+      ctx.db
+        .query("projects")
+        .withIndex("by_entryId", (q) => q.eq("entryId", entryId))
+        .filter((q) => q.eq(q.field("status"), "active"))
+        .first()
+    );
+    const projectResults = await Promise.all(projectQueries);
+    const projects = projectResults.filter(
+      (p): p is NonNullable<typeof p> => p !== null
+    );
 
-        if (!project) {
-          return null;
-        }
+    // Batch fetch first media file for each project
+    const mediaQueries = projects.map((project) =>
+      ctx.db
+        .query("mediaFiles")
+        .withIndex("by_project_ordered", (q) => q.eq("projectId", project._id))
+        .order("asc")
+        .first()
+    );
+    const mediaResults = await Promise.all(mediaQueries);
 
-        const firstMedia =
-          (await ctx.db
-            .query("mediaFiles")
-            .withIndex("by_project_ordered", (q) => q.eq("projectId", project._id))
-            .order("asc")
-            .first()) ?? null;
+    // Build a map of project ID to first media file
+    const mediaMap = new Map<Id<"projects">, typeof mediaResults[0]>();
+    projects.forEach((project, index) => {
+      if (mediaResults[index]) {
+        mediaMap.set(project._id, mediaResults[index]);
+      }
+    });
 
+    // Enrich projects with preview media
+    const enrichedProjects = await Promise.all(
+      projects.map(async (project) => {
+        const firstMedia = mediaMap.get(project._id);
         const previewMedia = firstMedia
           ? [
               {
@@ -1605,13 +1621,6 @@ export const getProjectsByEntryIdsPublic = query({
       })
     );
 
-    return projects
-      .filter((p): p is NonNullable<typeof p> => p !== null)
-      .map((p) => ({
-        _id: p._id,
-        name: p.name,
-        summary: p.summary,
-        previewMedia: p.previewMedia,
-      }));
+    return enrichedProjects;
   },
 });
