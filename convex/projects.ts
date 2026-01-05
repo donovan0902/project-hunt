@@ -1568,20 +1568,40 @@ export const getProjectsByEntryIdsPublic = query({
   handler: async (ctx, args) => {
     const projects = await Promise.all(
       args.entryIds.map(async (entryId) => {
-        return await ctx.db
+        const project = await ctx.db
           .query("projects")
           .withIndex("by_entryId", (q) => q.eq("entryId", entryId))
           .filter((q) => q.eq(q.field("status"), "active"))
           .first();
+
+        if (!project) {
+          return null;
+        }
+
+        const mediaFiles = await ctx.db
+          .query("mediaFiles")
+          .withIndex("by_project_ordered", (q) => q.eq("projectId", project._id))
+          .order("asc")
+          .take(1);
+
+        const previewMedia = await Promise.all(
+          mediaFiles.map(async (media) => ({
+            _id: media._id,
+            storageId: media.storageId,
+            type: media.type,
+            url: await ctx.storage.getUrl(media.storageId),
+          }))
+        );
+
+        return {
+          _id: project._id,
+          name: project.name,
+          summary: project.summary,
+          previewMedia,
+        };
       })
     );
 
-    return projects
-      .filter((p): p is NonNullable<typeof p> => p !== null)
-      .map((p) => ({
-        _id: p._id,
-        name: p.name,
-        summary: p.summary,
-      }));
+    return projects.filter((p): p is NonNullable<typeof p> => p !== null);
   },
 });
