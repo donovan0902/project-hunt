@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Garden | Scheduled Maintenance",
+  title: "Garden | Temporarily Offline",
   description:
-    "Garden is currently undergoing scheduled maintenance. We'll be back shortly.",
+    "Garden is temporarily offline while we migrate to Honda's corporate infrastructure.",
 };
 
 export default function RootLayout({
