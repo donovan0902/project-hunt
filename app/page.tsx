@@ -7,20 +7,19 @@ export default function MaintenancePage() {
           Garden is temporarily offline
         </h1>
         <div className="space-y-4 text-left text-base leading-relaxed text-zinc-600">
-          <p>Hey team,</p>
+          <p>Hey everyone,</p>
           <p>
-            Don&apos;t worry — there&apos;s nothing wrong with the app and there
-            weren&apos;t any security issues. Our cybersecurity team requires all
-            applications to be hosted on Honda&apos;s corporate infrastructure
-            to stay in line with company policy.
+            Garden is temporarily offline, I&apos;ve been receiving some
+            pressure from cybersecurity to bring the frontend within our network
+            and host it on Honda infrastructure, and to update the login system
+            to use Honda&apos;s approved provider.
           </p>
           <p>
-            I&apos;m in the process of migrating everything over and updating
-            the login system to use Honda&apos;s approved providers. Working on
-            getting this back up as quickly as I can.
+            I&apos;m working on getting this done as fast as I can. Appreciate
+            your patience! When this is all over, the app will look the same,
+            just with a different, less memorable url (bookmark would be handy).
           </p>
-          <p>Appreciate your patience!</p>
-          <p className="text-zinc-900 font-medium">— Donovan</p>
+          <p className="text-zinc-900 font-medium">-Donovan</p>
         </div>
         <div className="pt-2">
           <div className="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-4 py-2 text-sm text-zinc-600">
