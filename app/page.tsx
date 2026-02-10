@@ -21,15 +21,6 @@ export default function MaintenancePage() {
           </p>
           <p className="text-zinc-900 font-medium">-Donovan</p>
         </div>
-        <div className="pt-2">
-          <div className="inline-flex items-center gap-2 rounded-full bg-zinc-100 px-4 py-2 text-sm text-zinc-600">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
-            </span>
-            Migration in progress
-          </div>
-        </div>
       </div>
     </div>
   );
