@@ -10,7 +10,7 @@ export default function MaintenancePage() {
           <p>
             per IT's request, I had to move Garden to a different hosting provider, so the old URL is no longer working. If you were using the old URL, please update your bookmarks to the new one. Sorry for the inconvenience!
           </p>
-          <p className="text-zinc-900 font-medium">-Donovan</p>
+          <p className="text-zinc-900 font-medium">-Donovan Liao</p>
         </div>
       </div>
     </div>
