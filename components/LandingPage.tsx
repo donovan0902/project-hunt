@@ -68,7 +68,7 @@ export function LandingPage() {
             See what other people are working on
           </h1>
           <p className="mt-4 max-w-xl text-base text-zinc-500 sm:text-lg">
-            Sign in to peruse
+            Sign in to browse — and put your own work on the map.
           </p>
 
           <div className="mt-8 flex w-full flex-wrap items-center justify-center gap-3">
