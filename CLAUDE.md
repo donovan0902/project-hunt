@@ -43,6 +43,9 @@ project-hunt/
 │   │   ├── profile/[id]/page.tsx   # User profile — tabs for Built/Uses; shows department
 │   │   ├── project/[id]/page.tsx       # Project detail
 │   │   ├── project/[id]/edit/page.tsx  # Project edit form
+│   │   ├── project/[id]/versions/page.tsx         # Project versions list
+│   │   ├── project/[id]/versions/new/page.tsx     # Create new version
+│   │   ├── project/[id]/versions/[versionId]/edit/page.tsx  # Edit version
 │   │   ├── space/[id]/page.tsx         # Focus area/space feed (tabs: Projects + Threads)
 │   │   ├── thread/[id]/page.tsx        # Thread detail + comments
 │   │   └── submit/                     # Multi-step project submission
@@ -67,6 +70,7 @@ project-hunt/
 │   ├── ProjectMediaCarousel.tsx # Media carousel for project detail
 │   ├── ProjectFileDownload.tsx # File download section on project detail
 │   ├── SimilarProjectsPreview.tsx # Similar projects shown on /submit
+│   ├── VersionsList.tsx        # Expandable list of project versions with edit/delete/files
 │   ├── Facepile.tsx            # Adopter avatar group
 │   ├── ReadinessBadge.tsx      # Readiness status badge
 │   ├── SpaceIcon.tsx           # Renders a space's emoji icon or initial fallback
@@ -78,6 +82,7 @@ project-hunt/
 │   ├── LinksEditor.tsx         # Links editing UI for project forms
 │   ├── RichTextEditor.tsx / RichTextContent.tsx
 │   ├── MediaUploadField.tsx / FileUploadField.tsx
+│   ├── EmailPreferencesSection.tsx  # UI for managing email notification preferences
 │   └── ...
 │
 ├── convex/                     # Convex backend (functions + schema)
@@ -95,11 +100,14 @@ project-hunt/
 │   │   ├── engagement.ts       # upvotes, adoptions, views, hot score refresh
 │   │   ├── search.ts           # full-text and semantic search
 │   │   ├── media.ts            # file/media upload/delete/reorder
+│   │   ├── versions.ts         # project versioning (create, update, delete, files)
 │   │   ├── migrations.ts       # data migrations
 │   │   └── helpers.ts          # calculateHotScore, enrichProjects
 │   ├── emails.ts               # Email sending (SES v2), queue drainer, user preferences
-│   ├── emailRenderer.ts        # HTML + plain-text email templates (weekly digest)
+│   ├── emailRenderer.ts        # HTML + plain-text email templates (all email types)
 │   ├── digests.ts              # Weekly digest orchestrator, per-user data gathering, enqueuing
+│   ├── commentNotifications.ts # Email notifications for new comments on projects
+│   ├── spaceNotifications.ts   # Email notifications for new projects/threads in followed spaces
 │   ├── threads.ts              # Threads feature: CRUD, upvotes, comments, hot score
 │   ├── ragbot.ts               # AI agent (ProjectFinder) + thread management
 │   ├── rag.ts                  # RAG component init
@@ -184,9 +192,11 @@ Key tables and their purpose:
 
 | Table | Purpose |
 |---|---|
-| `projects` | Core project records; `status: "pending" \| "active"` |
+| `projects` | Core project records; `status: "pending" \| "active"`; has `versionCount` and `lastVersionAt` fields |
 | `mediaFiles` | Images/videos attached to projects (ordered) |
 | `projectFiles` | Downloadable files attached to projects |
+| `projectVersions` | Version/release records per project (tag, title, body, links) |
+| `versionFiles` | Files attached to a specific version (separate from `projectFiles`) |
 | `upvotes` | Per-user upvotes on projects |
 | `adoptions` | Per-user "I'm using this" signals |
 | `projectViews` | Unique view tracking per viewer ID |
@@ -194,7 +204,7 @@ Key tables and their purpose:
 | `commentUpvotes` | Per-user upvotes on project comments |
 | `emailQueue` | Outbound email queue (pending → sent/failed); drained by cron |
 | `notifications` | Aggregated activity notifications |
-| `users` | User profiles; `onboardingCompleted` gates access; `department` from Cognito |
+| `users` | User profiles; `onboardingCompleted` gates access; `department` from Cognito; `emailPreferences` object |
 | `userFocusAreas` | User ↔ focus area interest associations (follow/join) |
 | `teams` | Team/group records |
 | `focusAreas` | Taxonomy spaces (like subreddits); shown in sidebar |
@@ -298,11 +308,13 @@ const { results, status, loadMore } = usePaginatedQuery(api.projects.listPaginat
 All shared TypeScript types live in `lib/types.ts`. Key types:
 - `ProjectRowData` — enriched project for list/card display
 - `ThreadRowData` — enriched thread for list/card display
+- `ProjectVersionData` — enriched version with creator info and file count
 - `ReadinessStatus` — union of project maturity levels
 - `UserRef` — `{ _id, name, avatarUrl }`
 - `FocusArea` — `{ _id, name, group, icon }`
 - `OptimisticMessage` — for AI chat optimistic UI
 - `LinkItem`, `ExistingFileItem`, `NewProjectFileItem`, `ExistingMediaItem`, `NewFileItem`
+- `ExistingVersionFileItem` — version file reference for version edit forms
 
 Add new shared types here rather than defining them inline or in component files.
 
@@ -340,6 +352,7 @@ hotScore = (engagementScore + 1) / (ageHours + 2)^1.0
 - Also refreshed hourly via cron job (`convex/crons.ts` → `internal.projects.refreshHotScores`)
 - Pinned projects always appear first regardless of score
 - Feed index: `by_status_hotScore`; space feed index: `by_status_focusArea_hotScore`
+- `lastVersionAt` is also factored in when calculating hot score — publishing a new version boosts ranking
 
 **Threads**:
 - Same formula; `engagementScore` = upvote count + comment count
@@ -347,6 +360,34 @@ hotScore = (engagementScore + 1) / (ageHours + 2)^1.0
 - Feed index: `by_focusArea_hotScore`; global trending index: `by_hotScore`
 
 `calculateHotScore` lives in `convex/projects/helpers.ts` and is shared by both projects and threads.
+
+---
+
+## Project Versions Feature
+
+Projects support a versioned release history. Each project can have multiple versions (e.g. `v0`, `v1.0`, `v2.0-beta`). Versions have a title, optional rich-text release notes, optional links, and up to 10 attached files.
+
+### Backend (`convex/projects/versions.ts`, re-exported via `convex/projects.ts`)
+
+Key mutations:
+- `createVersion({ projectId, tag, title, body?, links? })` — creates a new version; auto-creates `v0` if it's the first version; tag must be unique per project; updates project `versionCount` and `lastVersionAt`; triggers hot score recalculation; sends `project_update` notification to adopters
+- `updateVersion({ versionId, tag, title, body?, links? })` — owner or project owner only; tag uniqueness enforced
+- `deleteVersion({ versionId })` — owner or project owner only; `v0` is protected from deletion
+- `addFileToVersion({ versionId, storageId, filename, contentType, fileSize })` — max 10 files per version
+- `deleteFileFromVersion({ fileId })` — removes a version file
+
+Key queries:
+- `getVersionById({ versionId })` — returns version enriched with creator info and file list
+- `listByProject({ projectId })` — all versions for a project, sorted newest first
+- `getVersionFiles({ versionId })` — files with signed storage URLs
+
+### Routes
+- `app/(app)/project/[id]/versions/page.tsx` — full list of versions with `VersionsList` component
+- `app/(app)/project/[id]/versions/new/page.tsx` — create new version form (uses `RichTextEditor`, `LinksEditor`, `FileUploadField`)
+- `app/(app)/project/[id]/versions/[versionId]/edit/page.tsx` — edit existing version
+
+### Components
+- `VersionsList` — expandable version cards with release notes, links, files; inline edit/delete controls; uses `RichTextContent` for body display
 
 ---
 
@@ -416,11 +457,19 @@ When a project is created or updated, `rag.add()` is called to upsert its embedd
 
 ---
 
-## Weekly Digest & Email Pipeline
+## Email System
 
-The app sends weekly digest emails summarizing platform activity. The pipeline uses a **3-tier architecture** with a cron-based queue drainer for delivery.
+The app sends three categories of email notifications. All delivery goes through the `emailQueue` table — never call SES directly from mutations.
 
-### Pipeline Flow
+### Email Types
+
+| Type | Trigger | File |
+|---|---|---|
+| `weekly_digest` | Cron: Monday 9am | `convex/digests.ts` + `convex/emails.ts` |
+| `comment_activity` | New comment on a project | `convex/commentNotifications.ts` |
+| `space_activity` | New project or thread posted in a followed space | `convex/spaceNotifications.ts` |
+
+### Weekly Digest Pipeline
 
 ```
 Cron (Monday 9am) → generateWeeklyDigests (action, convex/digests.ts)
@@ -435,14 +484,33 @@ Cron (every 5 min) → drainEmailQueue (action, convex/emails.ts)
   └─ marks each row "sent" or "failed" with reason
 ```
 
-### Key Files
+### Comment & Space Activity Notifications
 
-| File | Responsibility |
-|---|---|
-| `convex/digests.ts` | Orchestrator action, per-user data gathering, email enqueuing with deduplication |
-| `convex/emails.ts` | `sendEmail` (SES v2 integration), queue drainer, email preference queries/mutations |
-| `convex/emailRenderer.ts` | `renderWeeklyDigestEmail` — typed HTML + plain-text templates with `escapeHtml` |
-| `convex/users.ts` | `getEmailRecipient` — internal query returning `{ name, email }` for a user |
+- `enqueueCommentEmail()` in `convex/commentNotifications.ts` — triggered on new project comments; 30-minute dedup window; respects `projectActivity` email preference
+- `notifySpaceFollowers()` in `convex/spaceNotifications.ts` — triggered when a project or thread is published to a space; notifies all followers except the author; 30-minute dedup window; respects `spaceActivity` email preference
+
+### Email Renderers (`convex/emailRenderer.ts`)
+
+All HTML must use `escapeHtml()` for user-generated content. Templates include both HTML and plain-text versions:
+- `renderWeeklyDigestEmail()` — full digest with owned project stats, followed space activity, platform highlights
+- `renderCommentActivityEmail()` — notification of a new comment on your project
+- `renderSpaceActivityEmail()` — notification of new content in a followed space
+
+### Email Queue
+
+The `emailQueue` table tracks every outbound email:
+- Status transitions: `pending → sent | failed`
+- Index `by_status_createdAt` — used by drainer to fetch oldest pending emails first
+- Index `by_userId_type_createdAt` — used for deduplication
+
+### Email Preferences
+
+Stored in `emailPreferences` object on the `users` table. Categories:
+- `weeklyDigest` — weekly activity digest
+- `spaceActivity` — new content in followed spaces
+- `projectActivity` — comments on your projects
+
+All default to opt-in (enabled if undefined). Preferences are checked at enqueue time. The `EmailPreferencesSection` component (`components/EmailPreferencesSection.tsx`) renders the preference UI.
 
 ### Digest Data Shape
 
@@ -453,25 +521,17 @@ Each digest email payload contains:
 - `platformHighlights` — trending projects and threads across all spaces
 - `periodStart` / `periodEnd` — timestamps defining the digest window
 
-### Email Queue
-
-The `emailQueue` table tracks every outbound email with status transitions: `pending → sent | failed`. Key indexes:
-- `by_status_createdAt` — used by the queue drainer to fetch oldest pending emails first
-- `by_userId_type_createdAt` — used for deduplication (1-hour window prevents duplicate digests)
-
-### Email Preferences
-
-Users can opt out of email categories via `emailPreferences` on the `users` table. Categories: `weeklyDigest`, `spaceActivity`, `projectActivity`. All default to opt-in (enabled if undefined). Preferences are checked during digest generation, not at send time.
-
 ---
 
 ## Notifications
 
-Notifications are aggregated (upserted) per `(recipient, project, type)` tuple. Types:
+In-app notifications are aggregated (upserted) per `(recipient, project, type)` tuple. Types:
 - `"comment"` — someone commented on your project
 - `"upvote"` — upvote count notification (aggregated)
 - `"adoption"` — someone adopted your project
-- `"project_update"` — a project you've interacted with was updated
+- `"project_update"` — a project you've interacted with was updated (also triggered by new versions)
+
+Notifications are distinct from email notifications — they are in-app only and managed in `convex/notifications.ts`.
 
 ---
 
@@ -505,7 +565,7 @@ Secrets required:
 
 8. **PostHog analytics** is initialized in `instrumentation-client.ts` (Next.js client instrumentation hook) and proxied through Next.js rewrites (`/ingest/*` → PostHog endpoints) to avoid ad blockers. Requires `NEXT_PUBLIC_POSTHOG_KEY` env var.
 
-9. **Threads do not have notifications** — only project activity triggers notifications. This is intentional; do not add thread notifications without discussing the aggregation strategy.
+9. **Threads do not have in-app notifications** — only project activity triggers in-app notifications. Thread activity is covered by `space_activity` email notifications only. Do not add thread in-app notifications without discussing the aggregation strategy.
 
 10. **`SpacePicker`** is a controlled combobox component (`components/SpacePicker.tsx`) used on the standalone `/create-thread` page to let users pick which space a thread belongs to.
 
@@ -524,3 +584,11 @@ Secrets required:
 17. **Email templates live in `convex/emailRenderer.ts`** — all HTML must use `escapeHtml()` for user-generated content. Templates include both HTML and plain-text versions. Add new email types by adding a renderer function and a case in `sendEmail`'s type dispatch.
 
 18. **SES shares AWS credentials with Bedrock** — `AWS_REGION`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY` are shared across all AWS services (Bedrock, SES). The IAM role must have both Bedrock and SES permissions. `SES_FROM_EMAIL` must also be set and the sender address verified in SES.
+
+19. **Project versions auto-create `v0`** — when a user publishes their first version, `v0` is automatically created from the project's current state before the new version is added. `v0` cannot be deleted. Version tags must be unique per project.
+
+20. **Version files are separate from project files** — `versionFiles` (indexed by `versionId`) are distinct from `projectFiles` (indexed by `projectId`). Use the appropriate table and mutations; do not mix them.
+
+21. **Publishing a new version triggers notifications and hot score boost** — `createVersion` sends `project_update` in-app notifications to all project adopters and recalculates the project's hot score using `lastVersionAt`.
+
+22. **`FileUploadField` is generic** — it preserves the Convex `Id<"_storage">` type through the upload flow. Use the typed form when type-safety matters (version file uploads).
