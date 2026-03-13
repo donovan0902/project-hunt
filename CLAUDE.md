@@ -230,20 +230,7 @@ All tables have relevant indexes — always use `.withIndex()` for queries, neve
 
 ### Cognito Attribute Sync
 
-`ensureUser` extracts attributes from the Cognito identity token using an internal helper:
-
-```ts
-function extractCognitoAttributes(identity: Record<string, unknown>) {
-  const department = identity["custom:department"] as string | undefined;
-  const avatarUrlId = identity["picture"] as string | undefined;
-  return {
-    ...(department !== undefined ? { department } : {}),
-    ...(avatarUrlId !== undefined ? { avatarUrlId } : {}),
-  };
-}
-```
-
-The `department` field comes from the `custom:department` Cognito attribute and is stored on the `users` table. It is displayed on the user profile page.
+`ensureUser` syncs `department` (from `custom:department`) and `avatarUrlId` (from `picture`) out of the Cognito ID token into the `users` table. Do not prompt users to enter these manually.
 
 ---
 
@@ -294,16 +281,6 @@ import { ProjectRow } from "@/components/ProjectRow";
 import type { ProjectRowData } from "@/lib/types";
 ```
 
-### Convex data access in React
-```ts
-import { useQuery, useMutation, usePaginatedQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-
-const projects = useQuery(api.projects.listPaginated, { ... });
-const toggleUpvote = useMutation(api.projects.toggleUpvote);
-const { results, status, loadMore } = usePaginatedQuery(api.projects.listPaginated, {}, { initialNumItems: 15 });
-```
-
 ### Shared Types
 All shared TypeScript types live in `lib/types.ts`. Key types:
 - `ProjectRowData` — enriched project for list/card display
@@ -324,17 +301,7 @@ Add new shared types here rather than defining them inline or in component files
 - Use `cn()` from `lib/utils.ts` for conditional Tailwind classes
 
 ### Toast Notifications (Sonner)
-Use Sonner for all user-facing feedback. Never use `alert()` or silently swallow errors.
-
-```ts
-import { toast } from "sonner";
-
-toast.success("Project saved!");
-toast.error("Something went wrong.");
-toast.loading("Saving…");
-```
-
-The `<Toaster />` is mounted in `app/layout.tsx`. The custom wrapper at `components/ui/sonner.tsx` adds Lucide icons and theme awareness.
+Use `toast` from `sonner` for all user-facing feedback. Never use `alert()` or silently swallow errors. The `<Toaster />` is mounted in `app/layout.tsx`.
 
 ---
 
@@ -471,18 +438,7 @@ The app sends three categories of email notifications. All delivery goes through
 
 ### Weekly Digest Pipeline
 
-```
-Cron (Monday 9am) → generateWeeklyDigests (action, convex/digests.ts)
-  └─ loop: getEligibleUserBatch (50 users/batch, cursor-based)
-       └─ generateDigestBatch (action)
-            └─ per user: gatherUserDigestData (query) → enqueueDigestEmail (mutation)
-                 └─ inserts into emailQueue { status: "pending" }
-
-Cron (every 5 min) → drainEmailQueue (action, convex/emails.ts)
-  └─ fetches up to 14 pending emails (matching SES rate limits)
-  └─ per email: sendEmail → renders HTML via emailRenderer.ts → sends via SES v2
-  └─ marks each row "sent" or "failed" with reason
-```
+A Monday 9am cron calls `generateWeeklyDigests` (`convex/digests.ts`), which loops over users in batches of 50, gathers per-user stats, and inserts rows into `emailQueue`. A separate every-5-min cron (`drainEmailQueue` in `convex/emails.ts`) fetches up to 14 pending rows, renders HTML via `emailRenderer.ts`, sends via SES v2, and marks each row `sent` or `failed`.
 
 ### Comment & Space Activity Notifications
 
@@ -511,15 +467,6 @@ Stored in `emailPreferences` object on the `users` table. Categories:
 - `projectActivity` — comments on your projects
 
 All default to opt-in (enabled if undefined). Preferences are checked at enqueue time. The `EmailPreferencesSection` component (`components/EmailPreferencesSection.tsx`) renders the preference UI.
-
-### Digest Data Shape
-
-Each digest email payload contains:
-- `ownProjectActivity` — per-project stats (new upvotes, comments, adoptions, views)
-- `ownProjectTotals` — aggregated totals across all owned projects
-- `followedSpaceActivity` — top projects and new threads in followed spaces
-- `platformHighlights` — trending projects and threads across all spaces
-- `periodStart` / `periodEnd` — timestamps defining the digest window
 
 ---
 
@@ -567,28 +514,16 @@ Secrets required:
 
 9. **Threads do not have in-app notifications** — only project activity triggers in-app notifications. Thread activity is covered by `space_activity` email notifications only. Do not add thread in-app notifications without discussing the aggregation strategy.
 
-10. **`SpacePicker`** is a controlled combobox component (`components/SpacePicker.tsx`) used on the standalone `/create-thread` page to let users pick which space a thread belongs to.
-
-11. **Thread comments share UI components with project comments** — `CommentForm` and `CommentThread` are used for both. The backend tables differ (`threadComments` / `threadCommentUpvotes` vs `comments` / `commentUpvotes`), but the frontend components are consolidated.
+10. **Thread comments share UI components with project comments** — `CommentForm` and `CommentThread` are used for both. The backend tables differ (`threadComments` / `threadCommentUpvotes` vs `comments` / `commentUpvotes`), but the frontend components are consolidated.
 
 12. **Deleted comments with replies are retained** — when a comment is soft-deleted, it remains visible as `[deleted]` if it has non-deleted replies, preventing orphaned reply threads. The filter logic lives on the project detail page.
 
 13. **Upvote icons use `ArrowBigUp`** from Lucide React — not thumbs-up or heart icons. Use `ArrowBigUp` consistently for all upvote affordances across projects, threads, and comments.
 
-14. **Department field on users** — populated automatically from the Cognito `custom:department` attribute during `ensureUser`. Displayed on the profile page. Do not prompt users to enter it manually.
+14. **`userIntent`** (`"looking" | "sharing" | "both"`) is collected at onboarding and available in the backend but not surfaced in the UI. `department` is shown on the profile page; do not prompt users to enter it manually.
 
-15. **User profile page** — shows `department` if populated; does not display `userIntent` labels to the user. The `userIntent` field (`"looking" | "sharing" | "both"`) is collected at onboarding and available in the backend but is not currently surfaced in the UI.
+15. **Project versions auto-create `v0`** — when a user publishes their first version, `v0` is automatically created before the new version is added. `v0` cannot be deleted. Version tags must be unique per project.
 
-16. **Email sending uses a queue pattern** — never call SES directly from mutations. Always insert into `emailQueue` and let the cron-based drainer handle delivery. This provides rate limiting (14 emails/batch, matching SES limits), automatic retry, and full audit trail.
+16. **Version files are separate from project files** — `versionFiles` (indexed by `versionId`) are distinct from `projectFiles` (indexed by `projectId`). Do not mix them.
 
-17. **Email templates live in `convex/emailRenderer.ts`** — all HTML must use `escapeHtml()` for user-generated content. Templates include both HTML and plain-text versions. Add new email types by adding a renderer function and a case in `sendEmail`'s type dispatch.
-
-18. **SES shares AWS credentials with Bedrock** — `AWS_REGION`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY` are shared across all AWS services (Bedrock, SES). The IAM role must have both Bedrock and SES permissions. `SES_FROM_EMAIL` must also be set and the sender address verified in SES.
-
-19. **Project versions auto-create `v0`** — when a user publishes their first version, `v0` is automatically created from the project's current state before the new version is added. `v0` cannot be deleted. Version tags must be unique per project.
-
-20. **Version files are separate from project files** — `versionFiles` (indexed by `versionId`) are distinct from `projectFiles` (indexed by `projectId`). Use the appropriate table and mutations; do not mix them.
-
-21. **Publishing a new version triggers notifications and hot score boost** — `createVersion` sends `project_update` in-app notifications to all project adopters and recalculates the project's hot score using `lastVersionAt`.
-
-22. **`FileUploadField` is generic** — it preserves the Convex `Id<"_storage">` type through the upload flow. Use the typed form when type-safety matters (version file uploads).
+17. **Publishing a new version triggers notifications and hot score boost** — `createVersion` sends `project_update` in-app notifications to all project adopters and recalculates the project's hot score using `lastVersionAt`.
