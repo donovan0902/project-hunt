@@ -19,6 +19,38 @@ export const listActive = query({
   },
 });
 
+export const listActiveForSidebar = query({
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    const focusAreas = await ctx.db
+      .query("focusAreas")
+      .withIndex("by_isActive", (q) => q.eq("isActive", true))
+      .collect();
+
+    let starredIds = new Set<string>();
+
+    if (user) {
+      const starredFocusAreas = await ctx.db
+        .query("starredFocusAreas")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .collect();
+      starredIds = new Set(starredFocusAreas.map((star) => star.focusAreaId));
+    }
+
+    return focusAreas
+      .map((focusArea) => ({
+        ...focusArea,
+        isStarred: starredIds.has(focusArea._id),
+      }))
+      .sort((a, b) => {
+        if (a.isStarred !== b.isStarred) {
+          return a.isStarred ? -1 : 1;
+        }
+        return a.name.localeCompare(b.name);
+      });
+  },
+});
+
 export const listActiveGrouped = query({
   handler: async (ctx) => {
     const focusAreas = await ctx.db
@@ -146,5 +178,31 @@ export const toggleFollowSpace = mutation({
       });
       return { following: true };
     }
+  },
+});
+
+export const toggleSidebarStar = mutation({
+  args: { focusAreaId: v.id("focusAreas") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const existing = await ctx.db
+      .query("starredFocusAreas")
+      .withIndex("by_user_and_focus", (q) =>
+        q.eq("userId", user._id).eq("focusAreaId", args.focusAreaId)
+      )
+      .unique();
+
+    if (existing) {
+      await ctx.db.delete(existing._id);
+      return { isStarred: false };
+    }
+
+    await ctx.db.insert("starredFocusAreas", {
+      userId: user._id,
+      focusAreaId: args.focusAreaId,
+      createdAt: Date.now(),
+    });
+
+    return { isStarred: true };
   },
 });

@@ -150,6 +150,13 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_focus_area", ["focusAreaId"])
     .index("by_user_and_focus", ["userId", "focusAreaId"]),
+  starredFocusAreas: defineTable({
+    userId: v.id("users"),
+    focusAreaId: v.id("focusAreas"),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_and_focus", ["userId", "focusAreaId"]),
   teams: defineTable({
     name: v.string(),
     description: v.optional(v.string()),

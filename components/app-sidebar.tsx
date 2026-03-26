@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { CreateFocusAreaDialog } from "./CreateFocusAreaDialog";
 import { SpaceIcon } from "./SpaceIcon";
-import { Plus, PlusCircle, MessageSquarePlus, Info, Home, BookOpen } from "lucide-react";
+import { Plus, PlusCircle, MessageSquarePlus, Info, Home, BookOpen, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Sidebar,
   SidebarContent,
@@ -14,6 +16,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarMenuAction,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -22,9 +25,19 @@ import {
 } from "@/components/ui/sidebar";
 
 function SidebarSpaces() {
-  const focusAreas = useQuery(api.focusAreas.listActive);
+  const focusAreas = useQuery(api.focusAreas.listActiveForSidebar);
+  const toggleSidebarStar = useMutation(api.focusAreas.toggleSidebarStar);
 
   const loading = focusAreas === undefined;
+
+  const handleToggleStar = async (focusAreaId: Id<"focusAreas">) => {
+    try {
+      await toggleSidebarStar({ focusAreaId });
+    } catch (error) {
+      console.error("Failed to update starred space:", error);
+      toast.error("Failed to update starred space. Please try again.");
+    }
+  };
 
   return (
     <SidebarGroup className="p-0">
@@ -55,6 +68,18 @@ function SidebarSpaces() {
                     </span>
                   </Link>
                 </SidebarMenuButton>
+                <SidebarMenuAction
+                  aria-label={area.isStarred ? `Unstar ${area.name}` : `Star ${area.name}`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    void handleToggleStar(area._id);
+                  }}
+                >
+                  <Star
+                    className={area.isStarred ? "fill-current text-amber-500" : "text-zinc-400"}
+                  />
+                </SidebarMenuAction>
               </SidebarMenuItem>
             ))
           ) : (
