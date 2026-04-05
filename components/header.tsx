@@ -9,7 +9,6 @@ import {
 import { signOut } from "aws-amplify/auth";
 import { Bell, LogOut, User, PlusCircle } from "lucide-react";
 import { useCurrentUser } from "@/app/useCurrentUser";
-import { usePathname } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { SearchBar } from "./SearchBar";
 import { getRelativeTime } from "@/lib/utils";
@@ -25,9 +24,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function Header() {
   const { user: convexUser, isLoading: userLoading, isAuthenticated } = useCurrentUser();
-  const pathname = usePathname();
-  const spaceMatch = pathname.match(/^\/space\/([^/]+)/);
-  const submitHref = spaceMatch ? `/submit?spaceId=${spaceMatch[1]}` : "/submit";
   const notifications = useQuery(api.notifications.getNotifications, { limit: 8 }) ?? [];
   const unreadCount = useQuery(api.notifications.getUnreadNotificationCount) ?? 0;
   const markAllRead = useMutation(api.notifications.markAllRead);
@@ -111,7 +107,7 @@ export function Header() {
               {isAuthenticated && (
                 <NavigationMenuItem>
                   <Link
-                    href={submitHref}
+                    href="/submit"
                     className="inline-flex items-center gap-2 rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2"
                     aria-label="Register a tool"
                   >
