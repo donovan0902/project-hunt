@@ -161,7 +161,8 @@ export default defineSchema({
     .index("by_externalUserId", ["externalUserId"])
     .index("by_email", ["email"])
     .index("by_email_lower", ["emailLower"])
-    .index("by_department", ["department"]),
+    .index("by_department", ["department"])
+    .index("by_onboardingCompleted", ["onboardingCompleted"]),
   userFocusAreas: defineTable({
     userId: v.id("users"),
     focusAreaId: v.id("focusAreas"),

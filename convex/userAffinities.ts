@@ -312,7 +312,9 @@ export const refreshAllFeeds = internalMutation({
   handler: async (ctx) => {
     const users = await ctx.db
       .query("users")
-      .filter((q) => q.eq(q.field("onboardingCompleted"), true))
+      .withIndex("by_onboardingCompleted", (q) =>
+        q.eq("onboardingCompleted", true)
+      )
       .collect();
 
     for (let i = 0; i < users.length; i++) {
@@ -452,7 +454,9 @@ export const backfillAllFeeds = internalMutation({
   handler: async (ctx) => {
     const users = await ctx.db
       .query("users")
-      .filter((q) => q.eq(q.field("onboardingCompleted"), true))
+      .withIndex("by_onboardingCompleted", (q) =>
+        q.eq("onboardingCompleted", true)
+      )
       .collect();
 
     for (let i = 0; i < users.length; i++) {
