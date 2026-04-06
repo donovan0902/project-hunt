@@ -19,7 +19,7 @@ import { ArrowBigUp, MessageCircle, PlusCircle } from "lucide-react";
 import { SpaceIcon } from "@/components/SpaceIcon";
 import { cn } from "@/lib/utils";
 
-type FeedTab = "for-you" | "trending";
+type FeedTab = "for-you" | "trending" | "newest";
 
 export default function Home() {
   const { isAuthenticated } = useCurrentUser();
@@ -73,8 +73,8 @@ export default function Home() {
               </Link>
             </div>
 
-            {isAuthenticated && (
-              <div className="flex gap-1 px-1">
+            <div className="flex gap-1 px-1">
+              {isAuthenticated && (
                 <button
                   onClick={() => setActiveTab("for-you")}
                   className={cn(
@@ -86,22 +86,39 @@ export default function Home() {
                 >
                   For You
                 </button>
-                <button
-                  onClick={() => setActiveTab("trending")}
-                  className={cn(
-                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                    activeTab === "trending"
-                      ? "bg-zinc-900 text-white"
-                      : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-                  )}
-                >
-                  Trending
-                </button>
-              </div>
-            )}
+              )}
+              <button
+                onClick={() => setActiveTab("trending")}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  activeTab === "trending"
+                    ? "bg-zinc-900 text-white"
+                    : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                )}
+              >
+                Trending
+              </button>
+              <button
+                onClick={() => setActiveTab("newest")}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  activeTab === "newest"
+                    ? "bg-zinc-900 text-white"
+                    : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                )}
+              >
+                Newest
+              </button>
+            </div>
 
             {activeTab === "for-you" && isAuthenticated ? (
               <PersonalizedFeed
+                onUpvote={handleUpvote}
+                onFollow={handleFollow}
+                isAuthenticated={isAuthenticated}
+              />
+            ) : activeTab === "newest" ? (
+              <NewestFeed
                 onUpvote={handleUpvote}
                 onFollow={handleFollow}
                 isAuthenticated={isAuthenticated}
@@ -162,6 +179,33 @@ function TrendingFeed({
 }) {
   const { results, status, loadMore } = usePaginatedQuery(
     api.projects.listPaginated,
+    {},
+    { initialNumItems: 15 }
+  );
+
+  return (
+    <FeedList
+      results={results}
+      status={status}
+      loadMore={loadMore}
+      onUpvote={onUpvote}
+      onFollow={onFollow}
+      isAuthenticated={isAuthenticated}
+    />
+  );
+}
+
+function NewestFeed({
+  onUpvote,
+  onFollow,
+  isAuthenticated,
+}: {
+  onUpvote: (id: Id<"projects">) => Promise<void>;
+  onFollow: (id: Id<"projects">) => Promise<void>;
+  isAuthenticated: boolean;
+}) {
+  const { results, status, loadMore } = usePaginatedQuery(
+    api.projects.listNewestPaginated,
     {},
     { initialNumItems: 15 }
   );
