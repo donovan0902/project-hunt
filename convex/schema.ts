@@ -60,7 +60,8 @@ export default defineSchema({
   })
     .index("by_project", ["projectId"])
     .index("by_project_and_user", ["projectId", "userId"])
-    .index("by_userId", ["userId"]),
+    .index("by_userId", ["userId"])
+    .index("by_userId_createdAt", ["userId", "createdAt"]),
   adoptions: defineTable({
     projectId: v.id("projects"),
     userId: v.id("users"),
@@ -68,7 +69,8 @@ export default defineSchema({
   })
     .index("by_project", ["projectId"])
     .index("by_project_and_user", ["projectId", "userId"])
-    .index("by_user", ["userId"]),
+    .index("by_user", ["userId"])
+    .index("by_user_createdAt", ["userId", "createdAt"]),
   projectViews: defineTable({
     projectId: v.id("projects"),
     viewerId: v.string(),
@@ -97,7 +99,8 @@ export default defineSchema({
   })
     .index("by_project", ["projectId"])
     .index("by_parent", ["parentCommentId"])
-    .index("by_user", ["userId"]),
+    .index("by_user", ["userId"])
+    .index("by_user_createdAt", ["userId", "createdAt"]),
   commentUpvotes: defineTable({
     commentId: v.id("comments"),
     userId: v.id("users"),

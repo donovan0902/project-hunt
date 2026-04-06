@@ -86,23 +86,26 @@ async function computeAffinitiesForUser(
     .collect();
   const followedSpaceIds = userFocusAreas.map((ufa) => ufa.focusAreaId);
 
-  // Upvoted projects
+  // Recent engagements only — cap per table to stay within Convex read limits
+  const MAX_ENGAGEMENTS_PER_TYPE = 200;
+
   const upvotes = await ctx.db
     .query("upvotes")
-    .withIndex("by_userId", (q) => q.eq("userId", userId))
-    .collect();
+    .withIndex("by_userId_createdAt", (q) => q.eq("userId", userId))
+    .order("desc")
+    .take(MAX_ENGAGEMENTS_PER_TYPE);
 
-  // Adopted/followed projects
   const adoptions = await ctx.db
     .query("adoptions")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
-    .collect();
+    .withIndex("by_user_createdAt", (q) => q.eq("userId", userId))
+    .order("desc")
+    .take(MAX_ENGAGEMENTS_PER_TYPE);
 
-  // Comments by user
   const comments = await ctx.db
     .query("comments")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
-    .collect();
+    .withIndex("by_user_createdAt", (q) => q.eq("userId", userId))
+    .order("desc")
+    .take(MAX_ENGAGEMENTS_PER_TYPE);
 
   // Collect all engaged project IDs with timestamps
   const projectEngagements = new Map<string, number>(); // projectId → latest timestamp
