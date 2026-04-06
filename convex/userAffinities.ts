@@ -166,6 +166,113 @@ async function computeAffinitiesForUser(
   };
 }
 
+// ─── Shared feed scoring + upsert helpers ───────────────────────────────────
+
+interface AffinityProfile {
+  followedSpaceIds: Id<"focusAreas">[];
+  engagedCreatorIds: Id<"users">[];
+  engagedProjectIds: Id<"projects">[];
+  department: string | undefined;
+  spaceLastEngagedAt: Record<string, number>;
+  creatorLastEngagedAt: Record<string, number>;
+}
+
+async function scoreProjects(
+  ctx: MutationCtx,
+  projects: Doc<"projects">[],
+  affinity: AffinityProfile,
+  now: number
+): Promise<{ projectId: Id<"projects">; personalizedScore: number }[]> {
+  const followedSpaceSet = new Set(
+    affinity.followedSpaceIds.map((id) => id as string)
+  );
+  const engagedCreatorSet = new Set(
+    affinity.engagedCreatorIds.map((id) => id as string)
+  );
+  const engagedProjectSet = new Set(
+    affinity.engagedProjectIds.map((id) => id as string)
+  );
+
+  const entries: { projectId: Id<"projects">; personalizedScore: number }[] = [];
+
+  for (const project of projects) {
+    const baseScore = project.hotScore ?? 0;
+    let boost = 0;
+
+    const memberships = await ctx.db
+      .query("projectSpaces")
+      .withIndex("by_project", (q) => q.eq("projectId", project._id))
+      .collect();
+
+    let spaceBoostCount = 0;
+    for (const m of memberships) {
+      const spaceId = m.focusAreaId as string;
+      if (followedSpaceSet.has(spaceId)) {
+        const weight = recencyWeight(affinity.spaceLastEngagedAt[spaceId], now);
+        boost += SPACE_BOOST * weight;
+        spaceBoostCount++;
+        if (spaceBoostCount >= 2) break;
+      } else if (affinity.spaceLastEngagedAt[spaceId] !== undefined) {
+        const weight = recencyWeight(affinity.spaceLastEngagedAt[spaceId], now);
+        boost += IMPLICIT_SPACE_BOOST * weight;
+        spaceBoostCount++;
+        if (spaceBoostCount >= 2) break;
+      }
+    }
+
+    if (engagedCreatorSet.has(project.userId as string)) {
+      const weight = recencyWeight(
+        affinity.creatorLastEngagedAt[project.userId as string],
+        now
+      );
+      boost += CREATOR_BOOST * weight;
+    }
+
+    if (affinity.department) {
+      const creator = await ctx.db.get(project.userId);
+      if (creator?.department === affinity.department) {
+        boost += DEPARTMENT_BOOST;
+      }
+    }
+
+    if (engagedProjectSet.has(project._id as string)) {
+      boost += ENGAGED_PENALTY;
+    }
+
+    const clampedBoost = clamp(boost, MIN_BOOST, MAX_BOOST);
+    entries.push({
+      projectId: project._id,
+      personalizedScore: baseScore * (1 + clampedBoost),
+    });
+  }
+
+  return entries;
+}
+
+async function upsertFeedEntries(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  entries: { projectId: Id<"projects">; personalizedScore: number }[],
+  now: number
+) {
+  const oldEntries = await ctx.db
+    .query("userFeedEntries")
+    .withIndex("by_userId_personalizedScore", (q) => q.eq("userId", userId))
+    .collect();
+  for (const entry of oldEntries) {
+    await ctx.db.delete(entry._id);
+  }
+
+  for (const entry of entries) {
+    await ctx.db.insert("userFeedEntries", {
+      userId,
+      projectId: entry.projectId,
+      personalizedScore: entry.personalizedScore,
+      computedAt: now,
+    });
+  }
+}
+
 // ─── Registered functions ────────────────────────────────────────────────────
 
 export const recomputeAffinities = internalMutation({
@@ -203,104 +310,18 @@ export const computeFeedForUser = internalMutation({
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .first();
 
-    // Get candidate projects (created or versioned within 12 months)
+    const profile: AffinityProfile = {
+      followedSpaceIds: affinity?.followedSpaceIds ?? [],
+      engagedCreatorIds: affinity?.engagedCreatorIds ?? [],
+      engagedProjectIds: affinity?.engagedProjectIds ?? [],
+      department: affinity?.department,
+      spaceLastEngagedAt: affinity?.spaceLastEngagedAt ?? {},
+      creatorLastEngagedAt: affinity?.creatorLastEngagedAt ?? {},
+    };
+
     const projects = await getCandidateProjects(ctx);
-
-    // Build lookup sets from affinity
-    const followedSpaceSet = new Set(
-      (affinity?.followedSpaceIds ?? []).map((id) => id as string)
-    );
-    const engagedCreatorSet = new Set(
-      (affinity?.engagedCreatorIds ?? []).map((id) => id as string)
-    );
-    const engagedProjectSet = new Set(
-      (affinity?.engagedProjectIds ?? []).map((id) => id as string)
-    );
-    const spaceLastEngaged = affinity?.spaceLastEngagedAt ?? {};
-    const creatorLastEngaged = affinity?.creatorLastEngagedAt ?? {};
-    const userDepartment = affinity?.department;
-
-    // Compute personalized score for each project
-    const entries: { projectId: Id<"projects">; personalizedScore: number }[] = [];
-
-    for (const project of projects) {
-      const baseScore = project.hotScore ?? 0;
-      let boost = 0;
-
-      // Space affinity: check project's space memberships
-      const memberships = await ctx.db
-        .query("projectSpaces")
-        .withIndex("by_project", (q) => q.eq("projectId", project._id))
-        .collect();
-
-      let spaceBoostCount = 0;
-      for (const m of memberships) {
-        const spaceId = m.focusAreaId as string;
-        if (followedSpaceSet.has(spaceId)) {
-          // Explicit follow — full boost with recency weight
-          const weight = recencyWeight(spaceLastEngaged[spaceId], now);
-          boost += SPACE_BOOST * weight;
-          spaceBoostCount++;
-          if (spaceBoostCount >= 2) break;
-        } else if (spaceLastEngaged[spaceId] !== undefined) {
-          // Implicit affinity — user engaged with projects in this space
-          const weight = recencyWeight(spaceLastEngaged[spaceId], now);
-          boost += IMPLICIT_SPACE_BOOST * weight;
-          spaceBoostCount++;
-          if (spaceBoostCount >= 2) break;
-        }
-      }
-
-      // Creator affinity
-      if (engagedCreatorSet.has(project.userId as string)) {
-        const weight = recencyWeight(
-          creatorLastEngaged[project.userId as string],
-          now
-        );
-        boost += CREATOR_BOOST * weight;
-      }
-
-      // Department match
-      if (userDepartment) {
-        const creator = await ctx.db.get(project.userId);
-        if (creator?.department === userDepartment) {
-          boost += DEPARTMENT_BOOST;
-        }
-      }
-
-      // Already-engaged penalty
-      if (engagedProjectSet.has(project._id as string)) {
-        boost += ENGAGED_PENALTY;
-      }
-
-      const clampedBoost = clamp(boost, MIN_BOOST, MAX_BOOST);
-      const personalizedScore = baseScore * (1 + clampedBoost);
-
-      entries.push({ projectId: project._id, personalizedScore });
-    }
-
-    // Upsert feed entries — delete old ones and insert new
-    const existingEntries = await ctx.db
-      .query("userFeedEntries")
-      .withIndex("by_userId_personalizedScore", (q) =>
-        q.eq("userId", args.userId)
-      )
-      .collect();
-
-    // Delete all existing entries for this user
-    for (const entry of existingEntries) {
-      await ctx.db.delete(entry._id);
-    }
-
-    // Insert new entries
-    for (const entry of entries) {
-      await ctx.db.insert("userFeedEntries", {
-        userId: args.userId,
-        projectId: entry.projectId,
-        personalizedScore: entry.personalizedScore,
-        computedAt: now,
-      });
-    }
+    const entries = await scoreProjects(ctx, projects, profile, now);
+    await upsertFeedEntries(ctx, args.userId, entries, now);
   },
 });
 
@@ -352,100 +373,11 @@ export const recomputeAffinitiesAndFeed = internalMutation({
       await ctx.db.insert("userAffinities", doc);
     }
 
-    // Then recompute feed — inline the logic to avoid double scheduling
+    // Then recompute feed using the freshly computed affinities
     const now = Date.now();
     const projects = await getCandidateProjects(ctx);
-
-    const followedSpaceSet = new Set(
-      affinities.followedSpaceIds.map((id) => id as string)
-    );
-    const engagedCreatorSet = new Set(
-      affinities.engagedCreatorIds.map((id) => id as string)
-    );
-    const engagedProjectSet = new Set(
-      affinities.engagedProjectIds.map((id) => id as string)
-    );
-    const userDepartment = affinities.department;
-
-    const entries: { projectId: Id<"projects">; personalizedScore: number }[] = [];
-
-    for (const project of projects) {
-      const baseScore = project.hotScore ?? 0;
-      let boost = 0;
-
-      const memberships = await ctx.db
-        .query("projectSpaces")
-        .withIndex("by_project", (q) => q.eq("projectId", project._id))
-        .collect();
-
-      let spaceBoostCount = 0;
-      for (const m of memberships) {
-        const spaceId = m.focusAreaId as string;
-        if (followedSpaceSet.has(spaceId)) {
-          const weight = recencyWeight(
-            affinities.spaceLastEngagedAt[spaceId],
-            now
-          );
-          boost += SPACE_BOOST * weight;
-          spaceBoostCount++;
-          if (spaceBoostCount >= 2) break;
-        } else if (affinities.spaceLastEngagedAt[spaceId] !== undefined) {
-          const weight = recencyWeight(
-            affinities.spaceLastEngagedAt[spaceId],
-            now
-          );
-          boost += IMPLICIT_SPACE_BOOST * weight;
-          spaceBoostCount++;
-          if (spaceBoostCount >= 2) break;
-        }
-      }
-
-      if (engagedCreatorSet.has(project.userId as string)) {
-        const weight = recencyWeight(
-          affinities.creatorLastEngagedAt[project.userId as string],
-          now
-        );
-        boost += CREATOR_BOOST * weight;
-      }
-
-      if (userDepartment) {
-        const creator = await ctx.db.get(project.userId);
-        if (creator?.department === userDepartment) {
-          boost += DEPARTMENT_BOOST;
-        }
-      }
-
-      if (engagedProjectSet.has(project._id as string)) {
-        boost += ENGAGED_PENALTY;
-      }
-
-      const clampedBoost = clamp(boost, MIN_BOOST, MAX_BOOST);
-      entries.push({
-        projectId: project._id,
-        personalizedScore: baseScore * (1 + clampedBoost),
-      });
-    }
-
-    // Delete old entries
-    const oldEntries = await ctx.db
-      .query("userFeedEntries")
-      .withIndex("by_userId_personalizedScore", (q) =>
-        q.eq("userId", args.userId)
-      )
-      .collect();
-    for (const entry of oldEntries) {
-      await ctx.db.delete(entry._id);
-    }
-
-    // Insert new entries
-    for (const entry of entries) {
-      await ctx.db.insert("userFeedEntries", {
-        userId: args.userId,
-        projectId: entry.projectId,
-        personalizedScore: entry.personalizedScore,
-        computedAt: now,
-      });
-    }
+    const entries = await scoreProjects(ctx, projects, affinities, now);
+    await upsertFeedEntries(ctx, args.userId, entries, now);
   },
 });
 
