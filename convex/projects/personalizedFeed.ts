@@ -28,16 +28,6 @@ export const listPersonalizedFeed = query({
       return fallbackToGlobalFeed(ctx, args);
     }
 
-    const isFirstPage = !args.paginationOpts.cursor;
-    let pinnedProjects: Doc<"projects">[] = [];
-    if (isFirstPage) {
-      pinnedProjects = await ctx.db
-        .query("projects")
-        .withIndex("by_status", (q) => q.eq("status", "active"))
-        .filter((q) => q.eq(q.field("pinned"), true))
-        .collect();
-    }
-
     // Native Convex cursor-based pagination on precomputed scores
     const paginatedResult = await ctx.db
       .query("userFeedEntries")
@@ -47,20 +37,16 @@ export const listPersonalizedFeed = query({
       .order("desc")
       .paginate(args.paginationOpts);
 
-    // Resolve project docs, filter out pinned (already prepended) and inactive
-    const pinnedIds = new Set(pinnedProjects.map((p) => p._id as string));
+    // Resolve project docs, filter inactive
     const resolvedProjects = (
       await Promise.all(
-        paginatedResult.page
-          .filter((entry) => !pinnedIds.has(entry.projectId as string))
-          .map((entry) => ctx.db.get(entry.projectId))
+        paginatedResult.page.map((entry) => ctx.db.get(entry.projectId))
       )
     ).filter(
       (p): p is Doc<"projects"> => p !== null && p.status === "active"
     );
 
-    const allProjects = [...pinnedProjects, ...resolvedProjects];
-    const enriched = await enrichProjects(ctx, allProjects, currentUser._id);
+    const enriched = await enrichProjects(ctx, resolvedProjects, currentUser._id);
 
     return {
       ...paginatedResult,
@@ -76,25 +62,13 @@ async function fallbackToGlobalFeed(
   const currentUser = await getCurrentUser(ctx);
   const userId = currentUser?._id;
 
-  const isFirstPage = !args.paginationOpts.cursor;
-  let pinnedProjects: Doc<"projects">[] = [];
-  if (isFirstPage) {
-    pinnedProjects = await ctx.db
-      .query("projects")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
-      .filter((q) => q.eq(q.field("pinned"), true))
-      .collect();
-  }
-
   const paginatedResult = await ctx.db
     .query("projects")
     .withIndex("by_status_hotScore", (q) => q.eq("status", "active"))
-    .filter((q) => q.neq(q.field("pinned"), true))
     .order("desc")
     .paginate(args.paginationOpts);
 
-  const projectsToEnrich = [...pinnedProjects, ...paginatedResult.page];
-  const enriched = await enrichProjects(ctx, projectsToEnrich, userId);
+  const enriched = await enrichProjects(ctx, paginatedResult.page, userId);
 
   return {
     ...paginatedResult,
