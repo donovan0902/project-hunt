@@ -28,6 +28,7 @@ export default defineSchema({
     .searchIndex("allFields", { searchField: "allFields" })
     .index("by_entryId", ["entryId"])
     .index("by_status", ["status"])
+    .index("by_status_lastVersionAt", ["status", "lastVersionAt"])
     .index("by_userId", ["userId"])
     .index("by_teamId", ["teamId"])
     .index("by_status_engagement", ["status", "engagementScore"])
@@ -57,7 +58,9 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_project", ["projectId"])
-    .index("by_project_and_user", ["projectId", "userId"]),
+    .index("by_project_and_user", ["projectId", "userId"])
+    .index("by_userId", ["userId"])
+    .index("by_userId_createdAt", ["userId", "createdAt"]),
   adoptions: defineTable({
     projectId: v.id("projects"),
     userId: v.id("users"),
@@ -65,7 +68,8 @@ export default defineSchema({
   })
     .index("by_project", ["projectId"])
     .index("by_project_and_user", ["projectId", "userId"])
-    .index("by_user", ["userId"]),
+    .index("by_user", ["userId"])
+    .index("by_user_createdAt", ["userId", "createdAt"]),
   projectViews: defineTable({
     projectId: v.id("projects"),
     viewerId: v.string(),
@@ -94,7 +98,9 @@ export default defineSchema({
   })
     .index("by_project", ["projectId"])
     .index("by_parent", ["parentCommentId"])
-    .index("by_user", ["userId"]),
+    .index("by_user", ["userId"])
+    .index("by_user_createdAt", ["userId", "createdAt"])
+    .index("by_user_project", ["userId", "projectId"]),
   commentUpvotes: defineTable({
     commentId: v.id("comments"),
     userId: v.id("users"),
@@ -156,7 +162,8 @@ export default defineSchema({
     .index("by_externalUserId", ["externalUserId"])
     .index("by_email", ["email"])
     .index("by_email_lower", ["emailLower"])
-    .index("by_department", ["department"]),
+    .index("by_department", ["department"])
+    .index("by_onboardingCompleted", ["onboardingCompleted"]),
   userFocusAreas: defineTable({
     userId: v.id("users"),
     focusAreaId: v.id("focusAreas"),
@@ -271,4 +278,23 @@ export default defineSchema({
     uploadedAt: v.number(),
   })
     .index("by_version", ["versionId"]),
+  userAffinities: defineTable({
+    userId: v.id("users"),
+    followedSpaceIds: v.array(v.id("focusAreas")),
+    engagedCreatorIds: v.array(v.id("users")),
+    engagedProjectIds: v.array(v.id("projects")),
+    department: v.optional(v.string()),
+    spaceLastEngagedAt: v.optional(v.record(v.string(), v.number())),
+    creatorLastEngagedAt: v.optional(v.record(v.string(), v.number())),
+    lastRecomputedAt: v.number(),
+  })
+    .index("by_userId", ["userId"]),
+  userFeedEntries: defineTable({
+    userId: v.id("users"),
+    projectId: v.id("projects"),
+    personalizedScore: v.number(),
+    computedAt: v.number(),
+  })
+    .index("by_userId_personalizedScore", ["userId", "personalizedScore"])
+    .index("by_userId_projectId", ["userId", "projectId"]),
 });

@@ -5,6 +5,7 @@ import { getCurrentUserOrThrow, getCurrentUser } from "../users";
 import { emitNotificationEvent } from "../notificationEngine";
 import { calculateHotScore } from "./helpers";
 import { propagateHotScoreToMemberships } from "./spaces";
+import { incrementalAddEngagedProject, incrementalRemoveEngagedProject } from "../userAffinities";
 
 export const trackView = mutation({
   args: {
@@ -71,6 +72,8 @@ export const toggleUpvote = mutation({
           isRemoval: true,
         });
       }
+      // Incremental affinity update
+      await incrementalRemoveEngagedProject(ctx, user._id, args.projectId);
     } else {
       const now = Date.now();
       await ctx.db.insert("upvotes", {
@@ -93,6 +96,8 @@ export const toggleUpvote = mutation({
           isRemoval: false,
         });
       }
+      // Incremental affinity update
+      await incrementalAddEngagedProject(ctx, user._id, args.projectId, project.userId);
     }
   },
 });
@@ -115,6 +120,7 @@ export const toggleFollow = mutation({
     }
     if (existingFollow) {
       await ctx.db.delete(existingFollow._id);
+      await incrementalRemoveEngagedProject(ctx, user._id, args.projectId);
       return { followed: false };
     } else {
       await ctx.db.insert("adoptions", {
@@ -129,6 +135,7 @@ export const toggleFollow = mutation({
           actorUserId: user._id,
         });
       }
+      await incrementalAddEngagedProject(ctx, user._id, args.projectId, project.userId);
       return { followed: true };
     }
   },

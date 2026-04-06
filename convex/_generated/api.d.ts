@@ -28,6 +28,7 @@ import type * as projects_lifecycle from "../projects/lifecycle.js";
 import type * as projects_listing from "../projects/listing.js";
 import type * as projects_media from "../projects/media.js";
 import type * as projects_migrations from "../projects/migrations.js";
+import type * as projects_personalizedFeed from "../projects/personalizedFeed.js";
 import type * as projects_search from "../projects/search.js";
 import type * as projects_spaces from "../projects/spaces.js";
 import type * as projects_versions from "../projects/versions.js";
@@ -37,6 +38,7 @@ import type * as seed from "../seed.js";
 import type * as teams from "../teams.js";
 import type * as threads from "../threads.js";
 import type * as tools from "../tools.js";
+import type * as userAffinities from "../userAffinities.js";
 import type * as users from "../users.js";
 
 import type {
@@ -66,6 +68,7 @@ declare const fullApi: ApiFromModules<{
   "projects/listing": typeof projects_listing;
   "projects/media": typeof projects_media;
   "projects/migrations": typeof projects_migrations;
+  "projects/personalizedFeed": typeof projects_personalizedFeed;
   "projects/search": typeof projects_search;
   "projects/spaces": typeof projects_spaces;
   "projects/versions": typeof projects_versions;
@@ -75,6 +78,7 @@ declare const fullApi: ApiFromModules<{
   teams: typeof teams;
   threads: typeof threads;
   tools: typeof tools;
+  userAffinities: typeof userAffinities;
   users: typeof users;
 }>;
 

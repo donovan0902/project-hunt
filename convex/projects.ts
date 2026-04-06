@@ -36,6 +36,7 @@ export {
 export {
   list,
   listPaginated,
+  listNewestPaginated,
   getUserProjects,
   getByUserId,
   getFollowedByUser,
@@ -78,6 +79,10 @@ export {
   reindexProjectInRag,
   reindexAllProjectsInRag,
 } from "./projects/migrations";
+
+export {
+  listPersonalizedFeed,
+} from "./projects/personalizedFeed";
 
 export {
   listByProject as listVersionsByProject,
