@@ -6,7 +6,8 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 
 // ─── Scoring constants ───────────────────────────────────────────────────────
 
-const SPACE_BOOST = 0.5; // per matching space, max 2 spaces = +1.0
+const SPACE_BOOST = 0.5; // per matching followed space, max 2 spaces = +1.0
+const IMPLICIT_SPACE_BOOST = 0.25; // per space the user engaged in but doesn't follow
 const CREATOR_BOOST = 0.4;
 const DEPARTMENT_BOOST = 0.2;
 const ENGAGED_PENALTY = -0.3;
@@ -201,12 +202,17 @@ export const computeFeedForUser = internalMutation({
 
       let spaceBoostCount = 0;
       for (const m of memberships) {
-        if (followedSpaceSet.has(m.focusAreaId as string)) {
-          const weight = recencyWeight(
-            spaceLastEngaged[m.focusAreaId as string],
-            now
-          );
+        const spaceId = m.focusAreaId as string;
+        if (followedSpaceSet.has(spaceId)) {
+          // Explicit follow — full boost with recency weight
+          const weight = recencyWeight(spaceLastEngaged[spaceId], now);
           boost += SPACE_BOOST * weight;
+          spaceBoostCount++;
+          if (spaceBoostCount >= 2) break;
+        } else if (spaceLastEngaged[spaceId] !== undefined) {
+          // Implicit affinity — user engaged with projects in this space
+          const weight = recencyWeight(spaceLastEngaged[spaceId], now);
+          boost += IMPLICIT_SPACE_BOOST * weight;
           spaceBoostCount++;
           if (spaceBoostCount >= 2) break;
         }
@@ -338,12 +344,21 @@ export const recomputeAffinitiesAndFeed = internalMutation({
 
       let spaceBoostCount = 0;
       for (const m of memberships) {
-        if (followedSpaceSet.has(m.focusAreaId as string)) {
+        const spaceId = m.focusAreaId as string;
+        if (followedSpaceSet.has(spaceId)) {
           const weight = recencyWeight(
-            affinities.spaceLastEngagedAt[m.focusAreaId as string],
+            affinities.spaceLastEngagedAt[spaceId],
             now
           );
           boost += SPACE_BOOST * weight;
+          spaceBoostCount++;
+          if (spaceBoostCount >= 2) break;
+        } else if (affinities.spaceLastEngagedAt[spaceId] !== undefined) {
+          const weight = recencyWeight(
+            affinities.spaceLastEngagedAt[spaceId],
+            now
+          );
+          boost += IMPLICIT_SPACE_BOOST * weight;
           spaceBoostCount++;
           if (spaceBoostCount >= 2) break;
         }
@@ -443,10 +458,22 @@ export async function incrementalAddEngagedProject(
   const creatorLastEngagedAt = { ...(affinity.creatorLastEngagedAt ?? {}) };
   creatorLastEngagedAt[creatorId as string] = now;
 
+  // Track space engagement — look up which spaces this project belongs to
+  const memberships = await ctx.db
+    .query("projectSpaces")
+    .withIndex("by_project", (q) => q.eq("projectId", projectId))
+    .collect();
+
+  const spaceLastEngagedAt = { ...(affinity.spaceLastEngagedAt ?? {}) };
+  for (const m of memberships) {
+    spaceLastEngagedAt[m.focusAreaId as string] = now;
+  }
+
   await ctx.db.patch(affinity._id, {
     engagedProjectIds,
     engagedCreatorIds,
     creatorLastEngagedAt,
+    spaceLastEngagedAt,
   });
 }
 
