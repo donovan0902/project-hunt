@@ -327,9 +327,11 @@ export const computeFeedForUser = internalMutation({
 
 // Stagger delay between scheduled user recomputes to avoid thundering herd.
 // NOTE: At 5s per user with a 6-hour cron interval, this supports up to ~4,320
-// users before runs overlap. If user count approaches that, consider lowering
-// the stagger, increasing the cron interval, or switching to bounded batches
-// with a continuation cursor.
+// users before runs overlap. Overlapping runs only waste compute (each
+// recompute is idempotent: delete-all + reinsert), so this is a performance
+// concern, not a correctness one. If user count approaches that, consider
+// lowering the stagger, increasing the cron interval, or switching to bounded
+// batches with a continuation cursor.
 const STAGGER_MS = 5_000; // 5 seconds between each user
 
 export const refreshAllFeeds = internalMutation({
