@@ -25,9 +25,12 @@ export default function Home() {
   const { isAuthenticated } = useCurrentUser();
   const [activeTab, setActiveTab] = useState<FeedTab | null>(null);
 
-  // Derive effective tab: user's explicit choice if set, otherwise default based on auth
+  // Derive effective tab: user's explicit choice if set, otherwise default based on auth.
+  // Coerce "for-you" to "trending" when unauthenticated (e.g., after sign-out).
   const effectiveTab: FeedTab =
-    activeTab ?? (isAuthenticated ? "for-you" : "trending");
+    activeTab === "for-you" && !isAuthenticated
+      ? "trending"
+      : activeTab ?? (isAuthenticated ? "for-you" : "trending");
 
   const toggleUpvote = useMutation(api.projects.toggleUpvote);
   const toggleFollow = useMutation(api.projects.toggleFollow);
