@@ -304,6 +304,9 @@ export const computeFeedForUser = internalMutation({
   },
 });
 
+// Stagger delay between scheduled user recomputes to avoid thundering herd
+const STAGGER_MS = 5_000; // 5 seconds between each user
+
 export const refreshAllFeeds = internalMutation({
   args: {},
   handler: async (ctx) => {
@@ -312,11 +315,12 @@ export const refreshAllFeeds = internalMutation({
       .filter((q) => q.eq(q.field("onboardingCompleted"), true))
       .collect();
 
-    for (const user of users) {
-      // Schedule each user's recompute as a separate mutation to stay within limits
-      await ctx.scheduler.runAfter(0, internal.userAffinities.recomputeAffinitiesAndFeed, {
-        userId: user._id,
-      });
+    for (let i = 0; i < users.length; i++) {
+      await ctx.scheduler.runAfter(
+        i * STAGGER_MS,
+        internal.userAffinities.recomputeAffinitiesAndFeed,
+        { userId: users[i]._id }
+      );
     }
 
     return { scheduled: users.length };
@@ -451,10 +455,12 @@ export const backfillAllFeeds = internalMutation({
       .filter((q) => q.eq(q.field("onboardingCompleted"), true))
       .collect();
 
-    for (const user of users) {
-      await ctx.scheduler.runAfter(0, internal.userAffinities.recomputeAffinitiesAndFeed, {
-        userId: user._id,
-      });
+    for (let i = 0; i < users.length; i++) {
+      await ctx.scheduler.runAfter(
+        i * STAGGER_MS,
+        internal.userAffinities.recomputeAffinitiesAndFeed,
+        { userId: users[i]._id }
+      );
     }
 
     return { scheduled: users.length };
