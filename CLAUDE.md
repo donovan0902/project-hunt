@@ -66,7 +66,6 @@ project-hunt/
 ├── components/
 │   ├── ui/                     # shadcn/ui base components (do not modify manually)
 │   │   └── sonner.tsx          # Custom Sonner toaster wrapper with Lucide icons
-│   ├── auth/AuthPage.tsx       # Auth UI wrapper
 │   ├── chat/                   # AI chat components
 │   │   ├── ProjectCardsDisplay.tsx  # Project card grid for search results
 │   │   ├── SearchingIndicator.tsx   # Loading indicator for search
@@ -105,7 +104,7 @@ project-hunt/
 │   ├── auth.ts                 # Convex auth helpers
 │   ├── functions.ts            # Shared internal mutation helper
 │   ├── http.ts                 # HTTP router (currently empty)
-│   ├── crons.ts                # Scheduled jobs (hot scores, weekly digests, email queue drainer)
+│   ├── crons.ts                # Scheduled jobs (hot scores, weekly digests, email queue drainer, affinity refresh)
 │   ├── projects.ts             # Proxy re-exporter for convex/projects/*
 │   ├── projects/               # Project domain — split by responsibility
 │   │   ├── lifecycle.ts        # create, update, delete, confirm, backfill
@@ -116,13 +115,13 @@ project-hunt/
 │   │   ├── versions.ts         # version CRUD + file management
 │   │   ├── spaces.ts           # projectSpaces sync + hotScore propagation
 │   │   ├── migrations.ts       # data migrations
+│   │   ├── personalizedFeed.ts # listPersonalizedFeed query (uses userFeedEntries, falls back to hotScore)
 │   │   └── helpers.ts          # calculateHotScore, enrichProjects
 │   ├── emails.ts               # Email sending (SES v2), queue drainer, user preferences
 │   ├── emailRenderer.ts        # HTML + plain-text email templates (weekly digest, notifications)
 │   ├── digests.ts              # Weekly digest orchestrator, per-user data gathering, enqueuing
-│   ├── commentNotifications.ts # Email alerts when someone comments on your project (30-min dedup)
-│   ├── followNotifications.ts  # Email alerts when followed projects get comments
-│   ├── spaceNotifications.ts   # Email alerts for followed space activity
+│   ├── notificationEngine.ts   # Centralized notification engine — all in-app + email side effects flow through here
+│   ├── userAffinities.ts       # User affinity scoring + personalized feed precomputation
 │   ├── threads.ts              # Threads feature: CRUD, upvotes, comments, hot score
 │   ├── ragbot.ts               # AI agent (ProjectFinder) + thread management
 │   ├── rag.ts                  # RAG component init
@@ -239,6 +238,8 @@ Key tables and their purpose:
 | `threadUpvotes` | Per-user upvotes on threads |
 | `threadComments` | Threaded comments on threads (soft delete); `editedAt` timestamp set on edit |
 | `threadCommentUpvotes` | Per-user upvotes on thread comments |
+| `userAffinities` | Per-user affinity profile: followed spaces, engaged creators/projects, department, recency timestamps. Indexed by `by_userId`. |
+| `userFeedEntries` | Precomputed personalized feed entries per user: `projectId` + `personalizedScore`. Indexes: `by_userId_personalizedScore`, `by_userId_projectId`. |
 
 All tables have relevant indexes — always use `.withIndex()` for queries, never `.filter()` alone on large collections.
 
@@ -470,6 +471,11 @@ Cron (every 5 min) → drainEmailQueue (action, convex/emails.ts)
   └─ fetches up to 14 pending emails (matching SES rate limits)
   └─ per email: sendEmail → renders HTML via emailRenderer.ts → sends via SES v2
   └─ marks each row "sent" or "failed" with reason
+
+Cron (every 6 hours) → refreshAllFeeds (mutation, convex/userAffinities.ts)
+  └─ loop: all onboarded users (staggered 5s apart)
+       └─ recomputeAffinitiesAndFeed per user
+            └─ updates userAffinities doc + rebuilds userFeedEntries (delete-all + reinsert)
 ```
 
 ### Key Files
@@ -479,9 +485,7 @@ Cron (every 5 min) → drainEmailQueue (action, convex/emails.ts)
 | `convex/digests.ts` | Orchestrator action, per-user data gathering, email enqueuing with deduplication |
 | `convex/emails.ts` | `sendEmail` (SES v2 integration), queue drainer, email preference queries/mutations |
 | `convex/emailRenderer.ts` | `renderWeeklyDigestEmail` — typed HTML + plain-text templates with `escapeHtml` |
-| `convex/commentNotifications.ts` | Enqueues comment notification emails to project owners (30-min dedup window) |
-| `convex/followNotifications.ts` | Enqueues notification emails to users who follow a commented project |
-| `convex/spaceNotifications.ts` | Enqueues notification emails to users who follow a space with new activity |
+| `convex/notificationEngine.ts` | Centralized notification hub — all in-app + transactional email side effects |
 | `convex/users.ts` | `getEmailRecipient` — internal query returning `{ name, email }` for a user |
 
 ### Digest Data Shape
@@ -501,21 +505,73 @@ The `emailQueue` table tracks every outbound email with status transitions: `pen
 
 ### Email Preferences
 
-Users can opt out of email categories via `emailPreferences` on the `users` table. Categories: `weeklyDigest`, `spaceActivity`, `projectActivity`, `followedProjectComment`, `followedProjectUpdate`. All default to opt-in (enabled if undefined). Preferences are checked during digest generation, not at send time. The `EmailPreferencesSection` component renders toggle switches for each category.
+Users can opt out of email categories via `emailPreferences` on the `users` table. Categories: `weeklyDigest`, `spaceActivity`, `projectActivity`, `followedProjectComment`, `followedProjectUpdate`, `mentions`. All default to opt-in (enabled if undefined). Preferences are checked during digest generation, not at send time. The `EmailPreferencesSection` component renders toggle switches for each category.
+
+---
+
+## Personalized Feed & User Affinities
+
+The home feed (`app/(app)/page.tsx`) uses `api.projects.listPersonalizedFeed` to show users a personalized ranking of projects. For users without precomputed data, it falls back to the global hot-score feed.
+
+### Architecture
+
+- **`convex/userAffinities.ts`** — computes per-user affinity profiles and precomputes feed entries
+- **`convex/projects/personalizedFeed.ts`** — the `listPersonalizedFeed` query reads from `userFeedEntries`
+- **`userAffinities` table** — stores the affinity profile (followed spaces, engaged creators/projects, recency timestamps)
+- **`userFeedEntries` table** — precomputed scored entries indexed by `by_userId_personalizedScore`
+
+### Affinity Refresh Cadence
+
+Full recompute runs every 6 hours via cron (`internal.userAffinities.refreshAllFeeds`). Each user's job is staggered 5 seconds apart to avoid thundering herd. Incremental helpers update the in-memory affinity doc on engagement events (upvote, adoption, comment, space follow) — call these from engagement mutations so the profile stays fresh between cron cycles:
+
+- `incrementalAddEngagedProject(ctx, userId, projectId, creatorId)`
+- `incrementalRemoveEngagedProject(ctx, userId, projectId)`
+- `incrementalToggleFollowedSpace(ctx, userId, focusAreaId, isFollowing)`
+
+### Score Formula
+
+```
+personalizedScore = hotScore × (1 + clamp(boost, -0.3, 2.0))
+```
+
+Boost contributions:
+- `+0.5` per followed space match (max 2 spaces), weighted by recency decay
+- `+0.25` per implicit space engagement (not followed, but engaged), weighted by recency decay
+- `+0.4` if user has engaged with the project's creator, weighted by recency decay
+- `+0.2` if the project creator is in the same department
+- `−0.3` if the user has already upvoted/adopted/commented on the project
 
 ---
 
 ## Notifications
 
-Notifications are aggregated (upserted) per `(recipient, project, type)` tuple. Types:
+All notification side effects (in-app + transactional email) are routed through `convex/notificationEngine.ts`. Call `emitNotificationEvent(ctx, event)` from any mutation — the engine handles recipient resolution, preference checking, dedup, and fan-out. Weekly digest is excluded (different batch/cron pattern).
+
+### Event types
+
+| Event | Description |
+|---|---|
+| `"comment"` | New project comment — notifies owner (in-app + email) and parent author for replies |
+| `"thread_comment"` | New thread comment — notifies thread owner (email only) |
+| `"mention"` | @-mention in a comment or thread — notifies each mentioned user (in-app + email) |
+| `"upvote"` | Project upvote toggled — aggregated in-app notification for owner |
+| `"follow"` | User adopted a project — in-app notification for owner |
+| `"project_update"` | Project updated — fan-out email to adopters (scheduled via `processProjectUpdate`) |
+| `"thread_created"` | New thread in a space — fan-out email to space followers (scheduled via `processSpaceNotification`) |
+| `"project_added_to_space"` | Project added to a space — fan-out email to space followers (scheduled via `processSpaceNotification`) |
+
+### In-app notification types (stored in `notifications` table)
+
+Notifications are aggregated (upserted) per `(recipient, project, type)` tuple. In-app types:
 - `"comment"` — someone commented on your project
 - `"reply"` — someone replied to your comment
-- `"upvote"` — upvote count notification (aggregated)
-- `"adoption"` — legacy; kept for migration compatibility
-- `"follow"` — someone followed your project
-- `"project_update"` — a project you've interacted with was updated
-- `"followed_project_comment"` — a project you follow received a new comment
+- `"upvote"` — upvote count notification (aggregated, with `count` field)
+- `"follow"` — someone adopted/followed your project
+- `"project_update"` — a project you adopted was updated
+- `"followed_project_comment"` — a project you follow received a new comment (aggregated)
 - `"mention"` — you were @-mentioned in a comment or thread
+
+In-app notifications are pruned to the 50 most recent per user (`NOTIFICATION_HISTORY_LIMIT`).
 
 ---
 
@@ -549,7 +605,7 @@ Secrets required:
 
 8. **PostHog analytics** is initialized in `instrumentation-client.ts` (Next.js client instrumentation hook) and proxied through Next.js rewrites (`/ingest/*` → PostHog endpoints) to avoid ad blockers. Requires `NEXT_PUBLIC_POSTHOG_KEY` env var.
 
-9. **Thread in-app notifications are limited** — `notifications` table entries for threads are only generated for `"mention"` (when a user is @-mentioned). General thread/upvote/comment activity does not produce in-app badges; those exist only as email notifications (via `spaceNotifications.ts`). Do not add broad thread in-app notifications without discussing the aggregation strategy.
+9. **Thread in-app notifications are limited** — `notifications` table entries for threads are only generated for `"mention"` (when a user is @-mentioned). General thread/upvote/comment activity does not produce in-app badges; those exist only as email notifications (via `notificationEngine.ts` → `processSpaceNotification`). Do not add broad thread in-app notifications without discussing the aggregation strategy.
 
 10. **`SpacePicker`** is a controlled combobox component (`components/SpacePicker.tsx`) used on the standalone `/create-thread` page to let users pick which space a thread belongs to.
 
@@ -600,6 +656,12 @@ Secrets required:
 33. **`emailRenderer.ts` includes `stripHtml()`** — A `stripHtml()` helper strips HTML tags to produce plain-text snippets for email notifications and digest comment previews. Always use this (not a regex) when generating text-only representations of rich-text comment content.
 
 34. **`lib/upload.ts`** — Shared helpers for generating Convex storage upload URLs and handling file uploads on the frontend. Use these helpers rather than calling Convex storage APIs ad-hoc.
+
+35. **Centralized notification engine** — All notification side effects (in-app + email) must go through `emitNotificationEvent(ctx, event)` in `convex/notificationEngine.ts`. Do NOT directly insert into `notifications` or `emailQueue` from feature mutations — call the engine instead. The engine handles preference checks, 30-min dedup, fan-out scheduling, and notification pruning in one place.
+
+36. **Personalized feed** — The home feed uses `api.projects.listPersonalizedFeed` (defined in `convex/projects/personalizedFeed.ts`). It reads from the `userFeedEntries` table (precomputed personalized scores) and falls back to the global `by_status_hotScore` feed for anonymous users or users without precomputed entries. Feed entries are refreshed every 6 hours via `internal.userAffinities.refreshAllFeeds` (cron). Incremental helpers in `convex/userAffinities.ts` (`incrementalAddEngagedProject`, `incrementalRemoveEngagedProject`, `incrementalToggleFollowedSpace`) can be called from engagement mutations to keep the affinity doc fresh between full recomputes.
+
+37. **User affinity scoring** — `convex/userAffinities.ts` maintains a `userAffinities` document per user (indexed `by_userId`) tracking followed spaces, engaged creators/projects, department, and recency timestamps. The personalized score formula is: `baseHotScore × (1 + clamp(boost, -0.3, 2.0))`. Boost sources: followed-space match (+0.5/space, max 2 spaces), implicit space engagement (+0.25), creator affinity (+0.4), same department (+0.2), already-engaged penalty (−0.3). Recency decay: full weight within 7 days, linear decay to 0.3 by 90 days.
 
 <!-- convex-ai-start -->
 This project uses [Convex](https://convex.dev) as its backend.
