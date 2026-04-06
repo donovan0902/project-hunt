@@ -53,27 +53,7 @@ export default function Home() {
       <main className="mx-auto flex w-full max-w-[1400px] flex-col gap-8 px-6 pb-16 pt-4">
         <section className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_400px]">
           <div className="space-y-2">
-            <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-muted px-5 py-3">
-              <div className="min-w-0 flex-1">
-                <Link
-                  href="/submit"
-                  className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
-                >
-                  Share what you&apos;re working on
-                </Link>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Don&apos;t share anything you wouldn&apos;t share in a public Teams channel.{" "}
-                  <Link href="/guidelines" className="underline underline-offset-2 hover:text-foreground transition-colors">
-                    Guidelines
-                  </Link>
-                </p>
-              </div>
-              <Link href="/submit" className="flex-shrink-0 text-primary hover:text-accent transition-colors">
-                <PlusCircle className="h-5 w-5" />
-              </Link>
-            </div>
-
-            <div className="flex gap-1 px-1">
+            <div className="-mx-4 flex gap-1">
               {isAuthenticated && (
                 <button
                   onClick={() => setActiveTab("for-you")}
@@ -109,6 +89,26 @@ export default function Home() {
               >
                 Newest
               </button>
+            </div>
+
+            <div className="-mx-4 flex items-center justify-between gap-4 rounded-xl border border-border bg-muted px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-foreground">
+                  Only share things you&apos;d be comfortable posting in a public Teams channel.{" "}
+                  <Link
+                    href="/guidelines"
+                    className="underline underline-offset-2 transition-colors hover:text-foreground"
+                  >
+                    Content Guidelines
+                  </Link>
+                </p>
+              </div>
+              <Link
+                href="/submit"
+                className="flex-shrink-0 text-emerald-700 transition-colors hover:text-emerald-800"
+              >
+                <PlusCircle className="h-5 w-5" />
+              </Link>
             </div>
 
             {activeTab === "for-you" && isAuthenticated ? (

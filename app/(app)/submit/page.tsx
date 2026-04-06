@@ -204,7 +204,7 @@ function SubmitProjectContent() {
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
             <section className="w-full">
               {/* Space Selectors — grouped */}
-              <div className="space-y-3 mb-8">
+              <div className="mb-10 space-y-3">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <label className="text-base font-semibold text-zinc-900">
@@ -254,7 +254,7 @@ function SubmitProjectContent() {
               </div>
 
               {/* Title and form tabs — grouped */}
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {/* Title - Required field */}
                 <div className="space-y-2">
                   <Input
