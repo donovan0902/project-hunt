@@ -20,6 +20,38 @@ const DECAY_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
 const MIN_DECAY_WEIGHT = 0.3;
 const CANDIDATE_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000; // 12 months
 
+/** Fetch candidate projects: created OR versioned within the last 12 months. */
+async function getCandidateProjects(ctx: QueryCtx | MutationCtx) {
+  const cutoff = Date.now() - CANDIDATE_MAX_AGE_MS;
+
+  // Query 1: projects created within 12 months
+  const recentlyCreated = await ctx.db
+    .query("projects")
+    .withIndex("by_status_creationTime", (q) =>
+      q.eq("status", "active").gte("_creationTime", cutoff)
+    )
+    .collect();
+
+  // Query 2: older projects with a version published within 12 months
+  const recentlyVersioned = await ctx.db
+    .query("projects")
+    .withIndex("by_status_lastVersionAt", (q) =>
+      q.eq("status", "active").gte("lastVersionAt", cutoff)
+    )
+    .collect();
+
+  // Deduplicate
+  const seen = new Set(recentlyCreated.map((p) => p._id));
+  for (const p of recentlyVersioned) {
+    if (!seen.has(p._id)) {
+      recentlyCreated.push(p);
+      seen.add(p._id);
+    }
+  }
+
+  return recentlyCreated;
+}
+
 function recencyWeight(lastEngagedAt: number | undefined, now: number): number {
   if (!lastEngagedAt) return MIN_DECAY_WEIGHT;
   const age = now - lastEngagedAt;
@@ -168,14 +200,8 @@ export const computeFeedForUser = internalMutation({
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .first();
 
-    // Get active projects created within the last 12 months
-    const candidateCutoff = Date.now() - CANDIDATE_MAX_AGE_MS;
-    const projects = await ctx.db
-      .query("projects")
-      .withIndex("by_status_creationTime", (q) =>
-        q.eq("status", "active").gte("_creationTime", candidateCutoff)
-      )
-      .collect();
+    // Get candidate projects (created or versioned within 12 months)
+    const projects = await getCandidateProjects(ctx);
 
     // Build lookup sets from affinity
     const followedSpaceSet = new Set(
@@ -319,13 +345,7 @@ export const recomputeAffinitiesAndFeed = internalMutation({
 
     // Then recompute feed — inline the logic to avoid double scheduling
     const now = Date.now();
-    const candidateCutoff = now - CANDIDATE_MAX_AGE_MS;
-    const projects = await ctx.db
-      .query("projects")
-      .withIndex("by_status_creationTime", (q) =>
-        q.eq("status", "active").gte("_creationTime", candidateCutoff)
-      )
-      .collect();
+    const projects = await getCandidateProjects(ctx);
 
     const followedSpaceSet = new Set(
       affinities.followedSpaceIds.map((id) => id as string)
