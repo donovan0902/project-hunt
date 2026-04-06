@@ -519,6 +519,35 @@ export async function incrementalRemoveEngagedProject(
 
   if (!affinity) return;
 
+  // Check if the user still has any other engagement with this project
+  // before removing it from the affinity list
+  const hasUpvote = await ctx.db
+    .query("upvotes")
+    .withIndex("by_project_and_user", (q) =>
+      q.eq("projectId", projectId).eq("userId", userId)
+    )
+    .first();
+
+  const hasAdoption = await ctx.db
+    .query("adoptions")
+    .withIndex("by_project_and_user", (q) =>
+      q.eq("projectId", projectId).eq("userId", userId)
+    )
+    .first();
+
+  const hasUserComment = await ctx.db
+    .query("comments")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .filter((q) =>
+      q.and(
+        q.eq(q.field("projectId"), projectId),
+        q.neq(q.field("isDeleted"), true)
+      )
+    )
+    .first();
+
+  if (hasUpvote || hasAdoption || hasUserComment) return;
+
   await ctx.db.patch(affinity._id, {
     engagedProjectIds: affinity.engagedProjectIds.filter((id) => id !== projectId),
   });
