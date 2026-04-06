@@ -23,13 +23,12 @@ type FeedTab = "for-you" | "trending" | "newest";
 
 export default function Home() {
   const { isAuthenticated } = useCurrentUser();
-  const [activeTab, setActiveTab] = useState<FeedTab>(
-    isAuthenticated ? "for-you" : "trending"
-  );
+  const [activeTab, setActiveTab] = useState<FeedTab | null>(null);
 
-  useEffect(() => {
-    setActiveTab(isAuthenticated ? "for-you" : "trending");
-  }, [isAuthenticated]);
+  // Derive effective tab: user's explicit choice if set, otherwise default based on auth
+  const effectiveTab: FeedTab =
+    activeTab ?? (isAuthenticated ? "for-you" : "trending");
+
   const toggleUpvote = useMutation(api.projects.toggleUpvote);
   const toggleFollow = useMutation(api.projects.toggleFollow);
 
@@ -62,7 +61,7 @@ export default function Home() {
                   onClick={() => setActiveTab("for-you")}
                   className={cn(
                     "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                    activeTab === "for-you"
+                    effectiveTab === "for-you"
                       ? "bg-zinc-900 text-white"
                       : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
                   )}
@@ -74,7 +73,7 @@ export default function Home() {
                 onClick={() => setActiveTab("trending")}
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  activeTab === "trending"
+                  effectiveTab === "trending"
                     ? "bg-zinc-900 text-white"
                     : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
                 )}
@@ -85,7 +84,7 @@ export default function Home() {
                 onClick={() => setActiveTab("newest")}
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  activeTab === "newest"
+                  effectiveTab === "newest"
                     ? "bg-zinc-900 text-white"
                     : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
                 )}
@@ -114,13 +113,13 @@ export default function Home() {
               </Link>
             </div>
 
-            {activeTab === "for-you" && isAuthenticated ? (
+            {effectiveTab === "for-you" && isAuthenticated ? (
               <PersonalizedFeed
                 onUpvote={handleUpvote}
                 onFollow={handleFollow}
                 isAuthenticated={isAuthenticated}
               />
-            ) : activeTab === "newest" ? (
+            ) : effectiveTab === "newest" ? (
               <NewestFeed
                 onUpvote={handleUpvote}
                 onFollow={handleFollow}
