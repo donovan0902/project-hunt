@@ -299,32 +299,6 @@ export const recomputeAffinities = internalMutation({
   },
 });
 
-export const computeFeedForUser = internalMutation({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
-    const now = Date.now();
-
-    // Read affinity profile
-    const affinity = await ctx.db
-      .query("userAffinities")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
-      .first();
-
-    const profile: AffinityProfile = {
-      followedSpaceIds: affinity?.followedSpaceIds ?? [],
-      engagedCreatorIds: affinity?.engagedCreatorIds ?? [],
-      engagedProjectIds: affinity?.engagedProjectIds ?? [],
-      department: affinity?.department,
-      spaceLastEngagedAt: affinity?.spaceLastEngagedAt ?? {},
-      creatorLastEngagedAt: affinity?.creatorLastEngagedAt ?? {},
-    };
-
-    const projects = await getCandidateProjects(ctx);
-    const entries = await scoreProjects(ctx, projects, profile, now);
-    await upsertFeedEntries(ctx, args.userId, entries, now);
-  },
-});
-
 // Stagger delay between scheduled user recomputes to avoid thundering herd.
 // NOTE: At 5s per user with a 6-hour cron interval, this supports up to ~4,320
 // users before runs overlap. Overlapping runs only waste compute (each
