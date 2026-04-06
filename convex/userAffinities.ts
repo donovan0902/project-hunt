@@ -27,7 +27,7 @@ async function getCandidateProjects(ctx: QueryCtx | MutationCtx) {
   // Query 1: projects created within 12 months
   const recentlyCreated = await ctx.db
     .query("projects")
-    .withIndex("by_status_creationTime", (q) =>
+    .withIndex("by_status", (q) =>
       q.eq("status", "active").gte("_creationTime", cutoff)
     )
     .collect();

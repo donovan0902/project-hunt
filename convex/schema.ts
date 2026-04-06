@@ -28,7 +28,6 @@ export default defineSchema({
     .searchIndex("allFields", { searchField: "allFields" })
     .index("by_entryId", ["entryId"])
     .index("by_status", ["status"])
-    .index("by_status_creationTime", ["status", "_creationTime"])
     .index("by_status_lastVersionAt", ["status", "lastVersionAt"])
     .index("by_userId", ["userId"])
     .index("by_teamId", ["teamId"])
