@@ -18,6 +18,7 @@ const MIN_BOOST = -0.3;
 const FULL_WEIGHT_MS = 7 * 24 * 60 * 60 * 1000;
 const DECAY_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
 const MIN_DECAY_WEIGHT = 0.3;
+const CANDIDATE_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000; // 12 months
 
 function recencyWeight(lastEngagedAt: number | undefined, now: number): number {
   if (!lastEngagedAt) return MIN_DECAY_WEIGHT;
@@ -167,11 +168,14 @@ export const computeFeedForUser = internalMutation({
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .first();
 
-    // Get all active projects
-    const projects = await ctx.db
-      .query("projects")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
-      .collect();
+    // Get active projects created within the last 12 months
+    const candidateCutoff = Date.now() - CANDIDATE_MAX_AGE_MS;
+    const projects = (
+      await ctx.db
+        .query("projects")
+        .withIndex("by_status", (q) => q.eq("status", "active"))
+        .collect()
+    ).filter((p) => p._creationTime >= candidateCutoff);
 
     // Build lookup sets from affinity
     const followedSpaceSet = new Set(
@@ -315,10 +319,13 @@ export const recomputeAffinitiesAndFeed = internalMutation({
 
     // Then recompute feed — inline the logic to avoid double scheduling
     const now = Date.now();
-    const projects = await ctx.db
-      .query("projects")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
-      .collect();
+    const candidateCutoff = now - CANDIDATE_MAX_AGE_MS;
+    const projects = (
+      await ctx.db
+        .query("projects")
+        .withIndex("by_status", (q) => q.eq("status", "active"))
+        .collect()
+    ).filter((p) => p._creationTime >= candidateCutoff);
 
     const followedSpaceSet = new Set(
       affinities.followedSpaceIds.map((id) => id as string)
