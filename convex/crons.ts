@@ -24,4 +24,11 @@ crons.interval(
   internal.emails.drainEmailQueue
 );
 
+// Recompute all user affinities + personalized feed entries every 6 hours
+crons.interval(
+  "refresh user affinities and feeds",
+  { hours: 6 },
+  internal.userAffinities.refreshAllFeeds
+);
+
 export default crons;

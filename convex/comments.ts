@@ -4,6 +4,7 @@ import { getCurrentUserOrThrow, getCurrentUser } from "./users";
 import { calculateHotScore, propagateHotScoreToMemberships } from "./projects";
 import { parseMentionsFromHtml } from "./mentions";
 import { emitNotificationEvent } from "./notificationEngine";
+import { incrementalAddEngagedProject } from "./userAffinities";
 
 export const addComment = mutation({
   args: {
@@ -34,6 +35,9 @@ export const addComment = mutation({
         hotScore: newHotScore,
       });
       await propagateHotScoreToMemberships(ctx, args.projectId, newHotScore);
+
+      // Incremental affinity update
+      await incrementalAddEngagedProject(ctx, user._id, args.projectId, project.userId);
     }
 
     // Emit comment event — handles owner notification, reply notification, and follower fan-out

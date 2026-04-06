@@ -80,6 +80,10 @@ export {
 } from "./projects/migrations";
 
 export {
+  listPersonalizedFeed,
+} from "./projects/personalizedFeed";
+
+export {
   listByProject as listVersionsByProject,
   getVersionById,
   getVersionFiles,
