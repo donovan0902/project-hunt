@@ -27,6 +27,9 @@ export default function Home() {
     isAuthenticated ? "for-you" : "trending"
   );
 
+  useEffect(() => {
+    setActiveTab(isAuthenticated ? "for-you" : "trending");
+  }, [isAuthenticated]);
   const toggleUpvote = useMutation(api.projects.toggleUpvote);
   const toggleFollow = useMutation(api.projects.toggleFollow);
 
