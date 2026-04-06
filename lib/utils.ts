@@ -65,6 +65,8 @@ export function getRelativeTime(timestamp: number): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  if (days < 30) return `${weeks}w ago`;
   return new Date(timestamp).toLocaleDateString();
 }
 
