@@ -170,12 +170,12 @@ export const computeFeedForUser = internalMutation({
 
     // Get active projects created within the last 12 months
     const candidateCutoff = Date.now() - CANDIDATE_MAX_AGE_MS;
-    const projects = (
-      await ctx.db
-        .query("projects")
-        .withIndex("by_status", (q) => q.eq("status", "active"))
-        .collect()
-    ).filter((p) => p._creationTime >= candidateCutoff);
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("by_status_creationTime", (q) =>
+        q.eq("status", "active").gte("_creationTime", candidateCutoff)
+      )
+      .collect();
 
     // Build lookup sets from affinity
     const followedSpaceSet = new Set(
@@ -320,12 +320,12 @@ export const recomputeAffinitiesAndFeed = internalMutation({
     // Then recompute feed — inline the logic to avoid double scheduling
     const now = Date.now();
     const candidateCutoff = now - CANDIDATE_MAX_AGE_MS;
-    const projects = (
-      await ctx.db
-        .query("projects")
-        .withIndex("by_status", (q) => q.eq("status", "active"))
-        .collect()
-    ).filter((p) => p._creationTime >= candidateCutoff);
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("by_status_creationTime", (q) =>
+        q.eq("status", "active").gte("_creationTime", candidateCutoff)
+      )
+      .collect();
 
     const followedSpaceSet = new Set(
       affinities.followedSpaceIds.map((id) => id as string)
