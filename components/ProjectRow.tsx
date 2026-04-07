@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { ArrowBigUp, Forward, MessageCircle, Users, UserPlus, UserCheck } from "lucide-react";
+import { ArrowBigUp, Eye, EyeOff, Forward, MessageCircle } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import {
@@ -92,13 +92,8 @@ export function ProjectRow({
               u/{project.creatorName}
             </Link>
           )}
-          <span className="text-zinc-300">•</span>
-          <span>{getRelativeTime(project._creationTime)}</span>
         </div>
-        <div className="flex items-center gap-1 text-zinc-500">
-          <Users className="h-3.5 w-3.5" />
-          <span>{project.followerCount}</span>
-        </div>
+        <span className="shrink-0 text-zinc-400">{getRelativeTime(project.lastVersionAt ?? project._creationTime)}</span>
       </div>
 
       {/* Title */}
@@ -109,7 +104,8 @@ export function ProjectRow({
 
       {/* Media carousel OR summary - not both */}
       {hasMedia ? (
-        <div className="w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="w-full max-w-xl" onClick={(e) => e.stopPropagation()}>
+
           <ProjectMediaCarousel media={project.previewMedia} />
         </div>
       ) : project.summary ? (
@@ -170,15 +166,16 @@ export function ProjectRow({
               variant="ghost"
               size="sm"
               onClick={(e) => { e.stopPropagation(); handleFollowClick(); }}
-              className={`flex items-center gap-1.5 rounded-full px-3 h-8 text-sm font-medium !bg-zinc-200 hover:!bg-zinc-300 active:!bg-zinc-400 ${project.hasFollowed ? "!text-emerald-700 hover:!text-emerald-700" : "!text-zinc-700 hover:!text-zinc-700"}`}
-              aria-label={project.hasFollowed ? "Unfollow project" : "Follow project"}
+              className={`flex items-center gap-1.5 rounded-full px-3 h-8 text-sm font-medium !bg-zinc-200 hover:!bg-zinc-300 active:!bg-zinc-400 ${project.hasFollowed ? "text-emerald-700 hover:text-emerald-800" : "text-zinc-700 hover:text-zinc-800"}`}
+              aria-label={project.hasFollowed ? `Unwatch (${project.followerCount} watching)` : `Watch (${project.followerCount} watching)`}
+              title={project.hasFollowed ? `Unwatch (${project.followerCount} watching)` : `Watch (${project.followerCount} watching)`}
             >
               {project.hasFollowed ? (
-                <UserCheck className="h-4 w-4" aria-hidden="true" />
+                <Eye className="h-4 w-4" aria-hidden="true" />
               ) : (
-                <UserPlus className="h-4 w-4" aria-hidden="true" />
+                <EyeOff className="h-4 w-4" aria-hidden="true" />
               )}
-              <span>{project.hasFollowed ? "Following" : "Follow"}</span>
+              <span>{project.followerCount}</span>
             </Button>
           </motion.div>
         ) : (
@@ -190,9 +187,9 @@ export function ProjectRow({
               className="flex items-center gap-1.5 rounded-full px-3 h-8 text-sm font-medium !bg-zinc-200 hover:!bg-zinc-300 active:!bg-zinc-400 !text-zinc-700"
               asChild
             >
-              <Link href="/sign-in" prefetch={false}>
-                <UserPlus className="h-4 w-4" aria-hidden="true" />
-                <span>Follow</span>
+              <Link href="/sign-in" prefetch={false} title={`Watch (${project.followerCount} watching)`}>
+                <EyeOff className="h-4 w-4" aria-hidden="true" />
+                <span>{project.followerCount}</span>
               </Link>
             </Button>
           </motion.div>

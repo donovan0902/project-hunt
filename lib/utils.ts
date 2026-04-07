@@ -39,6 +39,20 @@ export function isRichTextEmpty(html: string): boolean {
 }
 
 /**
+ * Extracts all image `src` attribute values from an HTML string.
+ * Used to identify which Convex storage URLs are referenced in rich text content.
+ */
+export function extractImageSrcsFromHtml(html: string): string[] {
+  const srcs: string[] = [];
+  const regex = /<img[^>]+src="([^"]+)"/g;
+  let match;
+  while ((match = regex.exec(html)) !== null) {
+    srcs.push(match[1]);
+  }
+  return srcs;
+}
+
+/**
  * Returns a human-readable relative time string for a given timestamp.
  * e.g. "just now", "5m ago", "3h ago", "2d ago", or a locale date string.
  */
@@ -51,5 +65,16 @@ export function getRelativeTime(timestamp: number): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  if (days < 30) return `${weeks}w ago`;
   return new Date(timestamp).toLocaleDateString();
+}
+
+/** Escapes special HTML characters to prevent injection when building HTML strings. */
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useAction, useQuery } from "convex/react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
@@ -17,6 +17,7 @@ import { SpacePicker } from "@/components/SpacePicker";
 import { AdditionalSpacesPicker } from "@/components/AdditionalSpacesPicker";
 import { MediaUploadField } from "@/components/MediaUploadField";
 import { FileUploadField } from "@/components/FileUploadField";
+import { uploadFile } from "@/lib/upload";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
@@ -26,6 +27,7 @@ import {
 import Link from "next/link";
 import { LinksEditor } from "@/components/LinksEditor";
 import type { NewFileItem, NewProjectFileItem, LinkItem } from "@/lib/types";
+import { useMentionSearch } from "@/hooks/use-mention-search";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -38,8 +40,10 @@ import {
 const readinessSliderValues = ["just_an_idea", "early_prototype", "mostly_working", "ready_to_use"] as const;
 const readinessSliderLabels = ["Just an idea", "Early prototype", "Mostly working", "Ready to use"];
 
-export default function SubmitProject() {
+function SubmitProjectContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const prefilledSpaceId = searchParams.get("spaceId") as Id<"focusAreas"> | null;
   const createProject = useAction(api.projects.create);
   const cancelProject = useAction(api.projects.cancelProject);
   const confirmProject = useMutation(api.projects.confirmProject);
@@ -56,9 +60,10 @@ export default function SubmitProject() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<NewFileItem[]>([]);
   const [selectedProjectFiles, setSelectedProjectFiles] = useState<NewProjectFileItem[]>([]);
-  const [selectedFocusArea, setSelectedFocusArea] = useState<Id<"focusAreas"> | "personal" | null>("personal");
+  const [selectedFocusArea, setSelectedFocusArea] = useState<Id<"focusAreas"> | "personal" | null>(prefilledSpaceId ?? "personal");
   const [additionalSpaces, setAdditionalSpaces] = useState<Id<"focusAreas">[]>([]);
   const [selectedReadinessStatus, setSelectedReadinessStatus] = useState<"just_an_idea" | "early_prototype" | "mostly_working" | "ready_to_use">("just_an_idea");
+  const mentionSearch = useMentionSearch();
 
   const handlePrimarySpaceChange = (selected: Id<"focusAreas"> | "personal" | null) => {
     setSelectedFocusArea(selected);
@@ -118,28 +123,13 @@ export default function SubmitProject() {
       if (selectedFiles.length > 0) {
         await Promise.all(
           selectedFiles.map(async ({ file }) => {
-            // Generate upload URL
-            const uploadUrl = await generateUploadUrl();
+            const { storageId, contentType } = await uploadFile(file, generateUploadUrl);
 
-            // Upload file to storage
-            const uploadResult = await fetch(uploadUrl, {
-              method: "POST",
-              headers: { "Content-Type": file.type },
-              body: file,
-            });
-
-            if (!uploadResult.ok) {
-              throw new Error(`Failed to upload ${file.name}`);
-            }
-
-            const { storageId } = await uploadResult.json();
-
-            // Add media to project with metadata
             await addMediaToProject({
               projectId: result.projectId,
               storageId,
               type: file.type.startsWith('video/') ? 'video' : 'image',
-              contentType: file.type,
+              contentType,
             });
           })
         );
@@ -149,24 +139,13 @@ export default function SubmitProject() {
       if (selectedProjectFiles.length > 0) {
         await Promise.all(
           selectedProjectFiles.map(async ({ file }) => {
-            const uploadUrl = await generateUploadUrl();
-            const uploadResult = await fetch(uploadUrl, {
-              method: "POST",
-              headers: { "Content-Type": file.type },
-              body: file,
-            });
-
-            if (!uploadResult.ok) {
-              throw new Error(`Failed to upload ${file.name}`);
-            }
-
-            const { storageId } = await uploadResult.json();
+            const { storageId, contentType } = await uploadFile(file, generateUploadUrl);
 
             await addFileToProject({
               projectId: result.projectId,
               storageId,
               filename: file.name,
-              contentType: file.type,
+              contentType,
               fileSize: file.size,
             });
           })
@@ -225,7 +204,7 @@ export default function SubmitProject() {
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
             <section className="w-full">
               {/* Space Selectors — grouped */}
-              <div className="space-y-3 mb-8">
+              <div className="mb-10 space-y-3">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <label className="text-base font-semibold text-zinc-900">
@@ -275,7 +254,7 @@ export default function SubmitProject() {
               </div>
 
               {/* Title and form tabs — grouped */}
-              <div className="space-y-6">
+              <div className="space-y-3">
                 {/* Title - Required field */}
                 <div className="space-y-2">
                   <Input
@@ -305,6 +284,7 @@ export default function SubmitProject() {
                       placeholder="What is it? (optional)"
                       aria-label="What is it? (optional)"
                       disabled={isSubmitting}
+                      onMentionSearch={mentionSearch}
                     />
                   </div>
 
@@ -370,9 +350,12 @@ export default function SubmitProject() {
               </Tabs>
               </div>
 
-              <div className="flex items-center pt-4">
+              <div className="flex items-center gap-3 pt-4">
                 <Button type="submit" className="whitespace-nowrap" disabled={isSubmitting}>
                   {isSubmitting ? "Sharing..." : "Share this"}
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => router.back()} disabled={isSubmitting}>
+                  Cancel
                 </Button>
               </div>
             </section>
@@ -388,5 +371,19 @@ export default function SubmitProject() {
         </form>
       </main>
     </div>
+  );
+}
+
+export default function SubmitProject() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-zinc-50">
+        <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 pb-16 pt-4">
+          <p className="text-center text-zinc-500">Loading...</p>
+        </main>
+      </div>
+    }>
+      <SubmitProjectContent />
+    </Suspense>
   );
 }

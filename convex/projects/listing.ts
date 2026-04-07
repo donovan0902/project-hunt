@@ -244,6 +244,26 @@ export const getFollowedByUser = query({
   },
 });
 
+export const listNewestPaginated = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    const currentUser = await getCurrentUser(ctx);
+    const userId = currentUser?._id;
+
+    const paginatedResult = await ctx.db
+      .query("projects")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .order("desc")
+      .paginate(args.paginationOpts);
+
+    const enrichedProjects = await enrichProjects(ctx, paginatedResult.page, userId);
+    return {
+      ...paginatedResult,
+      page: enrichedProjects,
+    };
+  },
+});
+
 export const getNewestProjects = query({
   args: {
     limit: v.optional(v.number()),

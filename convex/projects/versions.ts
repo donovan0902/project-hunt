@@ -191,7 +191,7 @@ export const createVersion = mutation({
     await propagateHotScoreToMemberships(ctx, args.projectId, newHotScore);
 
     // Notify adopters about the project update
-    await ctx.scheduler.runAfter(0, internal.notifications.notifyProjectUpdate, {
+    await ctx.scheduler.runAfter(0, internal.notificationEngine.processProjectUpdate, {
       projectId: args.projectId,
       actorUserId: user._id,
     });

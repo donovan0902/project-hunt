@@ -8,6 +8,7 @@ import {
 import { useAuth } from "@workos-inc/authkit-nextjs/components";
 import { Bell, LogOut, User, PlusCircle } from "lucide-react";
 import { useCurrentUser } from "@/app/useCurrentUser";
+import { usePathname } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { SearchBar } from "./SearchBar";
 import { getRelativeTime } from "@/lib/utils";
@@ -24,6 +25,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 export function Header() {
   const { signOut } = useAuth();
   const { user: convexUser, isLoading: userLoading, isAuthenticated } = useCurrentUser();
+  const pathname = usePathname();
+  const spaceMatch = pathname.match(/^\/space\/([^/]+)/);
+  const submitHref = spaceMatch ? `/submit?spaceId=${spaceMatch[1]}` : "/submit";
   const notifications = useQuery(api.notifications.getNotifications, { limit: 8 }) ?? [];
   const unreadCount = useQuery(api.notifications.getUnreadNotificationCount) ?? 0;
   const markAllRead = useMutation(api.notifications.markAllRead);
@@ -68,6 +72,11 @@ export function Header() {
       return `${notification.actorName} replied to your comment on ${projectName}`;
     }
 
+    if (notification.type === "mention") {
+      const contentName = notification.threadTitle ?? projectName;
+      return `${notification.actorName} mentioned you in ${contentName}`;
+    }
+
     return `${notification.actorName} commented on ${projectName}`;
   };
 
@@ -94,8 +103,8 @@ export function Header() {
               {isAuthenticated && (
                 <NavigationMenuItem>
                   <Link
-                    href="/submit"
-                    className="inline-flex items-center gap-2 rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white shadow-md shadow-emerald-700/25 transition-all hover:bg-emerald-800 hover:shadow-lg hover:shadow-emerald-700/40 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                    href={submitHref}
+                    className="inline-flex items-center gap-2 rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2"
                     aria-label="Register a tool"
                   >
                     <PlusCircle className="h-4 w-4" />
@@ -130,9 +139,14 @@ export function Header() {
                       ) : (
                         <div className="max-h-96 divide-y divide-zinc-100 overflow-auto">
                           {notifications.map((notification) => {
-                            const href = `/project/${notification.projectId}${
-                              notification.type === "comment" || notification.type === "reply" || notification.type === "followed_project_comment" ? "#discussion" : ""
-                            }`;
+                            const hasCommentAnchor = !!(notification.commentId ?? notification.threadCommentId);
+                            const discussionTypes = ["comment", "reply", "followed_project_comment", "mention"];
+                            const shouldAppendDiscussion = hasCommentAnchor && discussionTypes.includes(notification.type);
+                            const href = notification.threadId
+                              ? `/thread/${notification.threadId}${shouldAppendDiscussion ? "#discussion" : ""}`
+                              : notification.projectId
+                                ? `/project/${notification.projectId}${shouldAppendDiscussion ? "#discussion" : ""}`
+                                : "/";
                             return (
                               <Link
                                 key={notification._id}

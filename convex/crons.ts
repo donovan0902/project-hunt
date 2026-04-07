@@ -10,10 +10,10 @@ crons.interval(
   internal.projects.refreshHotScores
 );
 
-// Generate weekly digests every Monday at 9:00 AM UTC
+// Generate weekly digests every Friday at 12:00 PM EST (17:00 UTC)
 crons.weekly(
   "generate weekly digests",
-  { dayOfWeek: "monday", hourUTC: 9, minuteUTC: 0 },
+  { dayOfWeek: "friday", hourUTC: 17, minuteUTC: 0 },
   internal.digests.generateWeeklyDigests
 );
 
@@ -22,6 +22,13 @@ crons.interval(
   "drain email queue",
   { minutes: 5 },
   internal.emails.drainEmailQueue
+);
+
+// Recompute all user affinities + personalized feed entries every 6 hours
+crons.interval(
+  "refresh user affinities and feeds",
+  { hours: 6 },
+  internal.userAffinities.refreshAllFeeds
 );
 
 export default crons;

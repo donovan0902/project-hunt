@@ -3,6 +3,21 @@ import { customCtx, customMutation } from "convex-helpers/server/customFunctions
 import { internalMutation as rawMutation } from "./_generated/server";
 import { DataModel } from "./_generated/dataModel";
 
+function stripHtml(html: string): string {
+  return html
+    .replace(/<\/(p|h[1-6]|li|div|blockquote|pre|ol|ul)>/gi, " ")
+    .replace(/<(p|h[1-6]|li|div|blockquote|pre|ol|ul|br)[^>]*\/?>/gi, " ")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 const triggers = new Triggers<DataModel>();
 
 triggers.register("projects", async (ctx, change) => {
@@ -14,7 +29,8 @@ triggers.register("projects", async (ctx, change) => {
       teamName = team?.name ?? "";
     }
 
-    const allFields = `${change.newDoc.name} ${change.newDoc.summary || ""} ${teamName}`.trim();
+    const summaryText = change.newDoc.summary ? stripHtml(change.newDoc.summary) : "";
+    const allFields = `${change.newDoc.name} ${summaryText} ${teamName}`.trim();
 
     if (change.newDoc.allFields !== allFields) {
       await ctx.db.patch(change.id, { allFields });

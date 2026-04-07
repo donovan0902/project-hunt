@@ -106,7 +106,7 @@ export function Facepile({
               <Plus className={iconSize} />
             </Link>
           </TooltipTrigger>
-          <TooltipContent>Sign in to follow</TooltipContent>
+          <TooltipContent>Sign in to watch</TooltipContent>
         </Tooltip>
       );
     }
@@ -135,7 +135,7 @@ export function Facepile({
               </div>
           </motion.button>
         </TooltipTrigger>
-          <TooltipContent>Following. Click to unfollow</TooltipContent>
+          <TooltipContent>Watching. Click to unwatch</TooltipContent>
         </Tooltip>
       );
     }
@@ -153,7 +153,7 @@ export function Facepile({
             <Plus className={iconSize} />
           </motion.button>
         </TooltipTrigger>
-        <TooltipContent>Follow this</TooltipContent>
+        <TooltipContent>Watch this</TooltipContent>
       </Tooltip>
     );
   };
@@ -182,7 +182,7 @@ export function Facepile({
           {remainingCount > 0 && (
             <>and {remainingCount} {remainingCount === 1 ? "other" : "others"} </>
           )}
-          {showLabel && "following"}
+          {showLabel && "watching"}
         </span>
       )}
     </div>
@@ -203,7 +203,7 @@ export function Facepile({
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>{totalCount} {totalCount === 1 ? "follower" : "followers"}</DialogTitle>
+              <DialogTitle>{totalCount} {totalCount === 1 ? "watcher" : "watchers"}</DialogTitle>
             </DialogHeader>
             <ScrollArea className="h-[300px] w-full rounded-md border p-4">
               <div className="space-y-4">

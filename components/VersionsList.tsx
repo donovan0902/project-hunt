@@ -138,7 +138,7 @@ function VersionCard({
                   <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
                     Attachments
                   </p>
-                  <ProjectFileDownload files={versionFiles} />
+                  <ProjectFileDownload files={versionFiles} projectId={projectId} />
                 </div>
               )}
 

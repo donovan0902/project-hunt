@@ -9,17 +9,16 @@
  */
 
 import type * as admin from "../admin.js";
-import type * as auth from "../auth.js";
-import type * as commentNotifications from "../commentNotifications.js";
 import type * as comments from "../comments.js";
 import type * as crons from "../crons.js";
 import type * as digests from "../digests.js";
 import type * as emailRenderer from "../emailRenderer.js";
 import type * as emails from "../emails.js";
 import type * as focusAreas from "../focusAreas.js";
-import type * as followNotifications from "../followNotifications.js";
 import type * as functions from "../functions.js";
 import type * as http from "../http.js";
+import type * as mentions from "../mentions.js";
+import type * as notificationEngine from "../notificationEngine.js";
 import type * as notifications from "../notifications.js";
 import type * as playground from "../playground.js";
 import type * as projects from "../projects.js";
@@ -29,16 +28,17 @@ import type * as projects_lifecycle from "../projects/lifecycle.js";
 import type * as projects_listing from "../projects/listing.js";
 import type * as projects_media from "../projects/media.js";
 import type * as projects_migrations from "../projects/migrations.js";
+import type * as projects_personalizedFeed from "../projects/personalizedFeed.js";
 import type * as projects_search from "../projects/search.js";
 import type * as projects_spaces from "../projects/spaces.js";
 import type * as projects_versions from "../projects/versions.js";
 import type * as rag from "../rag.js";
 import type * as ragbot from "../ragbot.js";
 import type * as seed from "../seed.js";
-import type * as spaceNotifications from "../spaceNotifications.js";
 import type * as teams from "../teams.js";
 import type * as threads from "../threads.js";
 import type * as tools from "../tools.js";
+import type * as userAffinities from "../userAffinities.js";
 import type * as users from "../users.js";
 
 import type {
@@ -49,17 +49,16 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
-  auth: typeof auth;
-  commentNotifications: typeof commentNotifications;
   comments: typeof comments;
   crons: typeof crons;
   digests: typeof digests;
   emailRenderer: typeof emailRenderer;
   emails: typeof emails;
   focusAreas: typeof focusAreas;
-  followNotifications: typeof followNotifications;
   functions: typeof functions;
   http: typeof http;
+  mentions: typeof mentions;
+  notificationEngine: typeof notificationEngine;
   notifications: typeof notifications;
   playground: typeof playground;
   projects: typeof projects;
@@ -69,16 +68,17 @@ declare const fullApi: ApiFromModules<{
   "projects/listing": typeof projects_listing;
   "projects/media": typeof projects_media;
   "projects/migrations": typeof projects_migrations;
+  "projects/personalizedFeed": typeof projects_personalizedFeed;
   "projects/search": typeof projects_search;
   "projects/spaces": typeof projects_spaces;
   "projects/versions": typeof projects_versions;
   rag: typeof rag;
   ragbot: typeof ragbot;
   seed: typeof seed;
-  spaceNotifications: typeof spaceNotifications;
   teams: typeof teams;
   threads: typeof threads;
   tools: typeof tools;
+  userAffinities: typeof userAffinities;
   users: typeof users;
 }>;
 
@@ -5424,43 +5424,6 @@ export declare const components: {
           processed: number;
           state: "inProgress" | "success" | "failed" | "canceled" | "unknown";
         }
-      >;
-    };
-  };
-  workOSAuthKit: {
-    lib: {
-      enqueueWebhookEvent: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          apiKey: string;
-          event: string;
-          eventId: string;
-          eventTypes?: Array<string>;
-          logLevel?: "DEBUG";
-          onEventHandle?: string;
-          updatedAt?: string;
-        },
-        any
-      >;
-      getAuthUser: FunctionReference<
-        "query",
-        "internal",
-        { id: string },
-        {
-          createdAt: string;
-          email: string;
-          emailVerified: boolean;
-          externalId?: null | string;
-          firstName?: null | string;
-          id: string;
-          lastName?: null | string;
-          lastSignInAt?: null | string;
-          locale?: null | string;
-          metadata: Record<string, any>;
-          profilePictureUrl?: null | string;
-          updatedAt: string;
-        } | null
       >;
     };
   };

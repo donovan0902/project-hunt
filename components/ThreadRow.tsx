@@ -51,7 +51,7 @@ export function ThreadRow({
       onClick={handleClick}
     >
       {/* Header: user + time */}
-      <div className="flex items-center gap-2 text-xs text-zinc-500">
+      <div className="flex items-center justify-between gap-2 text-xs text-zinc-500">
         <Link
           href={`/profile/${thread.userId}`}
           className="font-medium text-zinc-600 transition-colors hover:text-green-600"
@@ -59,8 +59,7 @@ export function ThreadRow({
         >
           u/{thread.creatorName}
         </Link>
-        <span className="text-zinc-300">&bull;</span>
-        <span>{getRelativeTime(thread.createdAt)}</span>
+        <span className="shrink-0 text-zinc-400">{getRelativeTime(thread.createdAt)}</span>
       </div>
 
       {/* Title */}

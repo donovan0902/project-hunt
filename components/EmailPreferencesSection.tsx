@@ -25,13 +25,18 @@ const PREFERENCES = [
   },
   {
     key: "followedProjectComment" as const,
-    label: "Comments on followed tools",
-    description: "When someone comments on a project you follow",
+    label: "Comments on watched tools",
+    description: "When someone comments on a project you watch",
   },
   {
     key: "followedProjectUpdate" as const,
-    label: "Updates to followed tools",
-    description: "When a project you follow is edited or releases a new version",
+    label: "Updates to watched tools",
+    description: "When a project you watch is edited or releases a new version",
+  },
+  {
+    key: "mentions" as const,
+    label: "Mentions",
+    description: "When someone @mentions you in a comment, thread, or description",
   },
 ];
 
@@ -42,7 +47,7 @@ export function EmailPreferencesSection() {
   if (!prefs) return null;
 
   const handleToggle = async (
-    key: "weeklyDigest" | "spaceActivity" | "projectActivity" | "followedProjectComment" | "followedProjectUpdate",
+    key: "weeklyDigest" | "spaceActivity" | "projectActivity" | "followedProjectComment" | "followedProjectUpdate" | "mentions",
     checked: boolean
   ) => {
     try {

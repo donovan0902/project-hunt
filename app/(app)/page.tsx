@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, usePaginatedQuery } from "convex/react";
@@ -17,45 +17,23 @@ import { ProjectRow } from "@/components/ProjectRow";
 import type { ProjectRowData } from "@/lib/types";
 import { ArrowBigUp, MessageCircle, PlusCircle } from "lucide-react";
 import { SpaceIcon } from "@/components/SpaceIcon";
+import { cn } from "@/lib/utils";
+
+type FeedTab = "for-you" | "trending" | "newest";
 
 export default function Home() {
-  const { results, status, loadMore } = usePaginatedQuery(
-    api.projects.listPaginated,
-    {},
-    { initialNumItems: 15 }
-  );
   const { isAuthenticated } = useCurrentUser();
+  const [activeTab, setActiveTab] = useState<FeedTab | null>(null);
+
+  // Derive effective tab: user's explicit choice if set, otherwise default based on auth.
+  // Coerce "for-you" to "trending" when unauthenticated (e.g., after sign-out).
+  const effectiveTab: FeedTab =
+    activeTab === "for-you" && !isAuthenticated
+      ? "trending"
+      : activeTab ?? (isAuthenticated ? "for-you" : "trending");
+
   const toggleUpvote = useMutation(api.projects.toggleUpvote);
   const toggleFollow = useMutation(api.projects.toggleFollow);
-
-  const isLoading = status === "LoadingFirstPage";
-  const canLoadMore = status === "CanLoadMore";
-  const isLoadingMore = status === "LoadingMore";
-
-  // Infinite scroll with Intersection Observer
-  const loadMoreRef = useRef<HTMLDivElement>(null);
-
-  const loadMoreCallback = useCallback(() => {
-    if (canLoadMore) {
-      loadMore(15);
-    }
-  }, [canLoadMore, loadMore]);
-
-  useEffect(() => {
-    if (!canLoadMore || !loadMoreRef.current) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          loadMoreCallback();
-        }
-      },
-      { rootMargin: "200px" }
-    );
-
-    observer.observe(loadMoreRef.current);
-    return () => observer.disconnect();
-  }, [canLoadMore, loadMoreCallback]);
 
   const handleUpvote = async (projectId: Id<"projects">) => {
     try {
@@ -80,62 +58,83 @@ export default function Home() {
       <main className="mx-auto flex w-full max-w-[1400px] flex-col gap-8 px-6 pb-16 pt-4">
         <section className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_400px]">
           <div className="space-y-2">
-            <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-muted px-5 py-3">
-              <div className="min-w-0 flex-1">
-                <Link
-                  href="/submit"
-                  className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
+            <div className="-mx-4 flex gap-1">
+              {isAuthenticated && (
+                <button
+                  onClick={() => setActiveTab("for-you")}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                    effectiveTab === "for-you"
+                      ? "bg-zinc-900 text-white"
+                      : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                  )}
                 >
-                  Share what you&apos;re working on
-                </Link>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  <Link href="/guidelines" className="underline underline-offset-2 hover:text-foreground transition-colors">
-                    What can I post?
+                  Recommended
+                </button>
+              )}
+              <button
+                onClick={() => setActiveTab("trending")}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  effectiveTab === "trending"
+                    ? "bg-zinc-900 text-white"
+                    : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                )}
+              >
+                Trending
+              </button>
+              <button
+                onClick={() => setActiveTab("newest")}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  effectiveTab === "newest"
+                    ? "bg-zinc-900 text-white"
+                    : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                )}
+              >
+                Newest
+              </button>
+            </div>
+
+            <div className="-mx-4 flex items-center justify-between gap-4 rounded-xl border border-border bg-muted px-4 py-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-foreground">
+                  Only share things you&apos;d be comfortable posting in a public Teams channel.{" "}
+                  <Link
+                    href="/guidelines"
+                    className="underline underline-offset-2 transition-colors hover:text-foreground"
+                  >
+                    Content Guidelines
                   </Link>
                 </p>
               </div>
-              <Link href="/submit" className="flex-shrink-0 text-primary hover:text-accent transition-colors">
+              <Link
+                href="/submit"
+                className="flex-shrink-0 text-emerald-700 transition-colors hover:text-emerald-800"
+              >
                 <PlusCircle className="h-5 w-5" />
               </Link>
             </div>
-            <LayoutGroup>
-              <div className="space-y-0">
-                {isLoading ? (
-                  <div className="py-8 text-center text-sm text-zinc-500">
-                    Loading projects...
-                  </div>
-                ) : results.length ? (
-                  <>
-                    {results.map((project, index) => (
-                      <React.Fragment key={project._id}>
-                        {index > 0 && <Separator className="bg-zinc-200" />}
-                        <motion.div
-                          layout
-                          layoutId={project._id}
-                          transition={{ type: "spring", stiffness: 500, damping: 35 }}
-                        >
-                          <ProjectRow
-                            project={project as ProjectRowData}
-                            onUpvote={handleUpvote}
-                            onFollow={handleFollow}
-                            isAuthenticated={isAuthenticated}
-                          />
-                        </motion.div>
-                      </React.Fragment>
-                    ))}
-                    {/* Infinite scroll sentinel */}
-                    <div ref={loadMoreRef} className="h-4" />
-                    {isLoadingMore && (
-                      <div className="py-4 text-center text-sm text-zinc-500">
-                        Loading more projects...
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <EmptyState />
-                )}
-              </div>
-            </LayoutGroup>
+
+            {effectiveTab === "for-you" && isAuthenticated ? (
+              <PersonalizedFeed
+                onUpvote={handleUpvote}
+                onFollow={handleFollow}
+                isAuthenticated={isAuthenticated}
+              />
+            ) : effectiveTab === "newest" ? (
+              <NewestFeed
+                onUpvote={handleUpvote}
+                onFollow={handleFollow}
+                isAuthenticated={isAuthenticated}
+              />
+            ) : (
+              <TrendingFeed
+                onUpvote={handleUpvote}
+                onFollow={handleFollow}
+                isAuthenticated={isAuthenticated}
+              />
+            )}
           </div>
 
           <div className="flex flex-col gap-8">
@@ -144,6 +143,171 @@ export default function Home() {
         </section>
       </main>
     </div>
+  );
+}
+
+function PersonalizedFeed({
+  onUpvote,
+  onFollow,
+  isAuthenticated,
+}: {
+  onUpvote: (id: Id<"projects">) => Promise<void>;
+  onFollow: (id: Id<"projects">) => Promise<void>;
+  isAuthenticated: boolean;
+}) {
+  const { results, status, loadMore } = usePaginatedQuery(
+    api.projects.listPersonalizedFeed,
+    {},
+    { initialNumItems: 15 }
+  );
+
+  return (
+    <FeedList
+      results={results}
+      status={status}
+      loadMore={loadMore}
+      onUpvote={onUpvote}
+      onFollow={onFollow}
+      isAuthenticated={isAuthenticated}
+    />
+  );
+}
+
+function TrendingFeed({
+  onUpvote,
+  onFollow,
+  isAuthenticated,
+}: {
+  onUpvote: (id: Id<"projects">) => Promise<void>;
+  onFollow: (id: Id<"projects">) => Promise<void>;
+  isAuthenticated: boolean;
+}) {
+  const { results, status, loadMore } = usePaginatedQuery(
+    api.projects.listPaginated,
+    {},
+    { initialNumItems: 15 }
+  );
+
+  return (
+    <FeedList
+      results={results}
+      status={status}
+      loadMore={loadMore}
+      onUpvote={onUpvote}
+      onFollow={onFollow}
+      isAuthenticated={isAuthenticated}
+    />
+  );
+}
+
+function NewestFeed({
+  onUpvote,
+  onFollow,
+  isAuthenticated,
+}: {
+  onUpvote: (id: Id<"projects">) => Promise<void>;
+  onFollow: (id: Id<"projects">) => Promise<void>;
+  isAuthenticated: boolean;
+}) {
+  const { results, status, loadMore } = usePaginatedQuery(
+    api.projects.listNewestPaginated,
+    {},
+    { initialNumItems: 15 }
+  );
+
+  return (
+    <FeedList
+      results={results}
+      status={status}
+      loadMore={loadMore}
+      onUpvote={onUpvote}
+      onFollow={onFollow}
+      isAuthenticated={isAuthenticated}
+    />
+  );
+}
+
+function FeedList({
+  results,
+  status,
+  loadMore,
+  onUpvote,
+  onFollow,
+  isAuthenticated,
+}: {
+  results: ProjectRowData[];
+  status: "LoadingFirstPage" | "CanLoadMore" | "LoadingMore" | "Exhausted";
+  loadMore: (numItems: number) => void;
+  onUpvote: (id: Id<"projects">) => Promise<void>;
+  onFollow: (id: Id<"projects">) => Promise<void>;
+  isAuthenticated: boolean;
+}) {
+  const isLoading = status === "LoadingFirstPage";
+  const canLoadMore = status === "CanLoadMore";
+  const isLoadingMore = status === "LoadingMore";
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const loadMoreCallback = useCallback(() => {
+    if (canLoadMore) {
+      loadMore(15);
+    }
+  }, [canLoadMore, loadMore]);
+
+  useEffect(() => {
+    if (!canLoadMore || !loadMoreRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMoreCallback();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [canLoadMore, loadMoreCallback]);
+
+  return (
+    <LayoutGroup>
+      <div className="space-y-0">
+        {isLoading ? (
+          <div className="py-8 text-center text-sm text-zinc-500">
+            Loading projects...
+          </div>
+        ) : results.length ? (
+          <>
+            {results.map((project, index) => (
+              <React.Fragment key={project._id}>
+                {index > 0 && <Separator className="bg-zinc-200" />}
+                <motion.div
+                  layout
+                  layoutId={project._id}
+                  transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                >
+                  <ProjectRow
+                    project={project as ProjectRowData}
+                    onUpvote={onUpvote}
+                    onFollow={onFollow}
+                    isAuthenticated={isAuthenticated}
+                  />
+                </motion.div>
+              </React.Fragment>
+            ))}
+            {/* Infinite scroll sentinel */}
+            <div ref={loadMoreRef} className="h-4" />
+            {isLoadingMore && (
+              <div className="py-4 text-center text-sm text-zinc-500">
+                Loading more projects...
+              </div>
+            )}
+          </>
+        ) : (
+          <EmptyState />
+        )}
+      </div>
+    </LayoutGroup>
   );
 }
 

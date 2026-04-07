@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useConvexAuth } from "convex/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/RichTextEditor";
+import { useMentionSearch } from "@/hooks/use-mention-search";
 import Link from "next/link";
 
 interface CommentFormProps {
@@ -12,6 +13,7 @@ interface CommentFormProps {
   onCancel?: () => void;
   placeholder?: string;
   submitText?: string;
+  initialValue?: string;
 }
 
 export function CommentForm({
@@ -19,18 +21,22 @@ export function CommentForm({
   onCancel,
   placeholder = "What do you think?",
   submitText = "Comment",
+  initialValue = "",
 }: CommentFormProps) {
   const { isAuthenticated } = useConvexAuth();
-  const [content, setContent] = useState("");
+  const mentionSearch = useMentionSearch();
+  const [content, setContent] = useState(initialValue);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isEmpty = !content || content === "<p><br></p>";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim()) return;
+    if (isEmpty) return;
 
     setIsSubmitting(true);
     try {
-      await onSubmit(content.trim());
+      await onSubmit(content);
       setContent("");
       onCancel?.();
     } catch (error) {
@@ -57,28 +63,31 @@ export function CommentForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-lg border border-zinc-200 bg-white p-3">
-      <Textarea
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        placeholder={placeholder}
-        className="min-h-8 border-0 px-0 text-sm leading-5 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-        disabled={isSubmitting}
-      />
-      <div className="mt-1 flex justify-end gap-2">
-        {onCancel && (
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={onCancel}
-            disabled={isSubmitting}
-          >
-            Cancel
+    <form onSubmit={handleSubmit}>
+      <div className="rounded-md border border-zinc-300 bg-zinc-50 px-3.5 py-2.5">
+        <RichTextEditor
+          value={content}
+          onChange={setContent}
+          placeholder={placeholder}
+          disabled={isSubmitting}
+          minimal
+          onMentionSearch={mentionSearch}
+        />
+        <div className="mt-2 flex justify-end gap-1.5">
+          {onCancel && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onCancel}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+          )}
+          <Button type="submit" disabled={isSubmitting || isEmpty}>
+            {isSubmitting ? "Posting..." : submitText}
           </Button>
-        )}
-        <Button type="submit" disabled={isSubmitting || !content.trim()}>
-          {isSubmitting ? "Posting..." : submitText}
-        </Button>
+        </div>
       </div>
     </form>
   );

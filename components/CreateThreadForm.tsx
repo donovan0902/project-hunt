@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { isRichTextEmpty } from "@/lib/utils";
+import { useThreadImageUpload } from "@/hooks/use-thread-image-upload";
+import { useMentionSearch } from "@/hooks/use-mention-search";
 import { MessageSquarePlus } from "lucide-react";
 
 interface CreateThreadFormProps {
@@ -23,6 +25,9 @@ export function CreateThreadForm({ focusAreaId, defaultExpanded, onSuccess }: Cr
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { handleImageUpload, getStorageIdsFromHtml, resetImageMap } =
+    useThreadImageUpload();
+  const mentionSearch = useMentionSearch();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,13 +35,22 @@ export function CreateThreadForm({ focusAreaId, defaultExpanded, onSuccess }: Cr
 
     setIsSubmitting(true);
     try {
+      const storageIdsFromBody = getStorageIdsFromHtml(body);
+      const hasImages = storageIdsFromBody.length > 0;
+      const bodyToSubmit = isRichTextEmpty(body) && !hasImages ? undefined : body;
+      const imageStorageIds = hasImages ? storageIdsFromBody : undefined;
       await createThread({
         title: title.trim(),
-        body: isRichTextEmpty(body) ? undefined : body,
+        body: bodyToSubmit,
         focusAreaId,
+        imageStorageIds:
+          imageStorageIds && imageStorageIds.length > 0
+            ? imageStorageIds
+            : undefined,
       });
       setTitle("");
       setBody("");
+      resetImageMap();
       setIsExpanded(false);
       onSuccess?.();
     } catch (error) {
@@ -77,6 +91,8 @@ export function CreateThreadForm({ focusAreaId, defaultExpanded, onSuccess }: Cr
         onChange={setBody}
         placeholder="Add more context (optional)"
         disabled={isSubmitting}
+        onImageUpload={handleImageUpload}
+        onMentionSearch={mentionSearch}
       />
       <div className="flex justify-end gap-2">
         <Button
@@ -86,6 +102,7 @@ export function CreateThreadForm({ focusAreaId, defaultExpanded, onSuccess }: Cr
             setIsExpanded(false);
             setTitle("");
             setBody("");
+            resetImageMap();
           }}
           disabled={isSubmitting}
         >

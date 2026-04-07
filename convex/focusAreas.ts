@@ -1,6 +1,7 @@
 import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUser, getCurrentUserOrThrow } from "./users";
+import { incrementalToggleFollowedSpace } from "./userAffinities";
 
 export const getById = query({
   args: { id: v.id("focusAreas") },
@@ -125,6 +126,30 @@ export const getMemberCount = query({
   },
 });
 
+export const listActiveWithFollowStatus = query({
+  handler: async (ctx) => {
+    const focusAreas = await ctx.db
+      .query("focusAreas")
+      .withIndex("by_isActive", (q) => q.eq("isActive", true))
+      .order("asc")
+      .collect();
+
+    const user = await getCurrentUser(ctx);
+    if (!user) return focusAreas.map((fa) => ({ ...fa, isFollowing: false }));
+
+    const joined = await ctx.db
+      .query("userFocusAreas")
+      .withIndex("by_user_and_focus", (q) => q.eq("userId", user._id))
+      .collect();
+    const joinedSet = new Set(joined.map((j) => j.focusAreaId));
+
+    return focusAreas.map((fa) => ({
+      ...fa,
+      isFollowing: joinedSet.has(fa._id),
+    }));
+  },
+});
+
 export const toggleFollowSpace = mutation({
   args: { focusAreaId: v.id("focusAreas") },
   handler: async (ctx, args) => {
@@ -137,6 +162,7 @@ export const toggleFollowSpace = mutation({
       .unique();
     if (existing) {
       await ctx.db.delete(existing._id);
+      await incrementalToggleFollowedSpace(ctx, user._id, args.focusAreaId, false);
       return { following: false };
     } else {
       await ctx.db.insert("userFocusAreas", {
@@ -144,6 +170,7 @@ export const toggleFollowSpace = mutation({
         focusAreaId: args.focusAreaId,
         createdAt: Date.now(),
       });
+      await incrementalToggleFollowedSpace(ctx, user._id, args.focusAreaId, true);
       return { following: true };
     }
   },

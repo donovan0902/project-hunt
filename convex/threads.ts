@@ -4,7 +4,8 @@ import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { getCurrentUser, getCurrentUserOrThrow } from "./users";
 import { calculateHotScore } from "./projects/helpers";
-import { enqueueCommentEmail } from "./commentNotifications";
+import { parseMentionsFromHtml } from "./mentions";
+import { emitNotificationEvent } from "./notificationEngine";
 import { rag } from "./rag";
 import type { EntryId } from "@convex-dev/rag";
 
@@ -21,6 +22,7 @@ export const createThread = mutation({
     title: v.string(),
     body: v.optional(v.string()),
     focusAreaId: v.id("focusAreas"),
+    imageStorageIds: v.optional(v.array(v.id("_storage"))),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
@@ -39,20 +41,17 @@ export const createThread = mutation({
       hotScore: calculateHotScore(0, now, now),
       createdAt: now,
       allFields: buildAllFields(trimmedTitle, trimmedBody),
+      imageStorageIds: args.imageStorageIds,
     });
 
     // Notify followers of the space about the new thread
-    await ctx.scheduler.runAfter(
-      0,
-      internal.spaceNotifications.notifySpaceFollowers,
-      {
-        focusAreaId: args.focusAreaId,
-        contentType: "thread" as const,
-        contentId: threadId,
-        contentTitle: trimmedTitle,
-        creatorUserId: user._id,
-      }
-    );
+    await emitNotificationEvent(ctx, {
+      type: "thread_created",
+      threadId,
+      focusAreaId: args.focusAreaId,
+      actorUserId: user._id,
+      contentTitle: trimmedTitle,
+    });
 
     // Index thread in RAG for AI search
     await ctx.scheduler.runAfter(
@@ -65,6 +64,24 @@ export const createThread = mutation({
       }
     );
 
+    // Process @mentions in thread body
+    if (trimmedBody) {
+      const mentionedUserIds = parseMentionsFromHtml(trimmedBody);
+      if (mentionedUserIds.length > 0) {
+        await emitNotificationEvent(ctx, {
+          type: "mention",
+          actorUserId: user._id,
+          mentionedUserIds,
+          contentType: "thread",
+          contentId: threadId as string,
+          contentTitle: trimmedTitle,
+          contextSnippet: trimmedBody.slice(0, 200),
+          threadId,
+          excludeUserIds: [],
+        });
+      }
+    }
+
     return threadId;
   },
 });
@@ -76,6 +93,7 @@ export const updateThread = mutation({
     threadId: v.id("threads"),
     title: v.string(),
     body: v.optional(v.string()),
+    imageStorageIds: v.optional(v.array(v.id("_storage"))),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
@@ -91,7 +109,17 @@ export const updateThread = mutation({
       title: trimmedTitle,
       body: trimmedBody,
       allFields: buildAllFields(trimmedTitle, trimmedBody),
+      imageStorageIds: args.imageStorageIds,
     });
+
+    // Clean up removed images from storage (after successful patch)
+    const oldIds = new Set(thread.imageStorageIds ?? []);
+    const newIds = new Set(args.imageStorageIds ?? []);
+    for (const oldId of oldIds) {
+      if (!newIds.has(oldId)) {
+        await ctx.storage.delete(oldId);
+      }
+    }
 
     // Re-index thread in RAG
     await ctx.scheduler.runAfter(
@@ -103,6 +131,26 @@ export const updateThread = mutation({
         body: trimmedBody,
       }
     );
+
+    // Process @mentions: only notify newly-added mentions
+    if (trimmedBody) {
+      const oldMentions = new Set(parseMentionsFromHtml(thread.body ?? ""));
+      const newMentions = parseMentionsFromHtml(trimmedBody);
+      const addedMentions = newMentions.filter((id) => !oldMentions.has(id));
+
+      if (addedMentions.length > 0) {
+        await emitNotificationEvent(ctx, {
+          type: "mention",
+          actorUserId: user._id,
+          mentionedUserIds: addedMentions,
+          contentType: "thread",
+          contentId: args.threadId as string,
+          contentTitle: trimmedTitle,
+          threadId: args.threadId,
+          excludeUserIds: [],
+        });
+      }
+    }
   },
 });
 
@@ -143,6 +191,13 @@ export const deleteThread = mutation({
     await Promise.all(
       threadUpvotes.map((upvote) => ctx.db.delete(upvote._id))
     );
+
+    // Clean up inline images from storage
+    if (thread.imageStorageIds) {
+      await Promise.all(
+        thread.imageStorageIds.map((id) => ctx.storage.delete(id))
+      );
+    }
 
     // Remove from RAG index
     if (thread.entryId) {
@@ -353,6 +408,22 @@ export const getTrendingThreads = query({
   },
 });
 
+export const getThreadImageUrls = query({
+  args: { storageIds: v.array(v.id("_storage")) },
+  handler: async (ctx, args) => {
+    const results = await Promise.all(
+      args.storageIds.map(async (storageId) => ({
+        storageId,
+        url: await ctx.storage.getUrl(storageId),
+      }))
+    );
+    return results.filter(
+      (r): r is { storageId: typeof r.storageId; url: string } =>
+        r.url !== null
+    );
+  },
+});
+
 // ─── Upvotes ─────────────────────────────────────────────────────────────────
 
 export const toggleUpvote = mutation({
@@ -434,15 +505,30 @@ export const addComment = mutation({
         hotScore: calculateHotScore(newEngagementScore, thread.createdAt, now),
       });
 
-      if (thread.userId !== user._id) {
-        await enqueueCommentEmail(ctx, {
+      // Notify thread owner (email) via notification engine
+      await emitNotificationEvent(ctx, {
+        type: "thread_comment",
+        threadId: args.threadId,
+        threadCommentId: commentId,
+        actorUserId: user._id,
+        parentCommentId: args.parentCommentId,
+        contentSnippet: args.content.slice(0, 200),
+      });
+
+      // Process @mentions in the thread comment
+      const mentionedUserIds = parseMentionsFromHtml(args.content);
+      if (mentionedUserIds.length > 0) {
+        await emitNotificationEvent(ctx, {
+          type: "mention",
+          actorUserId: user._id,
+          mentionedUserIds,
           contentType: "thread",
-          contentId: args.threadId,
+          contentId: args.threadId as string,
           contentTitle: thread.title,
-          contentOwnerUserId: thread.userId,
-          commenterUserId: user._id,
-          commenterName: user.name,
-          commentSnippet: args.content.slice(0, 200),
+          contextSnippet: args.content.slice(0, 200),
+          threadId: args.threadId,
+          threadCommentId: commentId,
+          excludeUserIds: [thread.userId as string],
         });
       }
     }
@@ -501,6 +587,27 @@ export const getComments = query({
     );
 
     return enrichedComments;
+  },
+});
+
+export const editComment = mutation({
+  args: {
+    commentId: v.id("threadComments"),
+    content: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const comment = await ctx.db.get(args.commentId);
+    if (!comment || comment.isDeleted) {
+      throw new Error("Comment not found");
+    }
+    if (comment.userId !== user._id) {
+      throw new Error("You can only edit your own comments");
+    }
+    await ctx.db.patch(args.commentId, {
+      content: args.content,
+      editedAt: Date.now(),
+    });
   },
 });
 

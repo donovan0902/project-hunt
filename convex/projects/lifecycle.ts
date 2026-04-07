@@ -7,6 +7,8 @@ import type { Id } from "../_generated/dataModel";
 import type { EntryId } from "@convex-dev/rag";
 import { calculateHotScore } from "./helpers";
 import { propagateHotScoreToMemberships } from "./spaces";
+import { parseMentionsFromHtml } from "../mentions";
+import { emitNotificationEvent } from "../notificationEngine";
 
 export const getCurrentUserInternal = internalQuery({
   args: {},
@@ -63,7 +65,6 @@ export const populateProjectDetails = internalQuery({
         name: v.string(),
         summary: v.optional(v.string()),
         teamId: v.optional(v.id("teams")),
-        upvotes: v.number(),
         entryId: v.optional(v.string()),
         status: v.union(v.literal("pending"), v.literal("active")),
         userId: v.id("users"),
@@ -127,7 +128,6 @@ export const createProject = internalMutationFromFunctions({
       name: args.name,
       summary: args.summary,
       teamId,
-      upvotes: 0,
       viewCount: 0,
       status: args.status,
       userId: args.userId,
@@ -204,17 +204,30 @@ export const confirmProject = mutation({
       .collect();
 
     for (const row of membershipRows) {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.spaceNotifications.notifySpaceFollowers,
-        {
-          focusAreaId: row.focusAreaId,
-          contentType: "project" as const,
-          contentId: args.projectId,
+      await emitNotificationEvent(ctx, {
+        type: "project_added_to_space",
+        projectId: args.projectId,
+        focusAreaId: row.focusAreaId,
+        actorUserId: project.userId,
+        contentTitle: project.name,
+      });
+    }
+
+    // Process @mentions in the description when project goes live
+    if (project.summary) {
+      const mentionedUserIds = parseMentionsFromHtml(project.summary);
+      if (mentionedUserIds.length > 0) {
+        await emitNotificationEvent(ctx, {
+          type: "mention",
+          actorUserId: project.userId,
+          mentionedUserIds,
+          contentType: "project",
+          contentId: args.projectId as string,
           contentTitle: project.name,
-          creatorUserId: project.userId,
-        }
-      );
+          projectId: args.projectId,
+          excludeUserIds: [],
+        });
+      }
     }
   },
 });
@@ -342,9 +355,17 @@ export const updateProject = action({
       projectId: args.projectId,
       entryId,
     });
-    await ctx.runMutation(internal.notifications.notifyProjectUpdate, {
+    await ctx.runMutation(internal.notificationEngine.processProjectUpdate, {
       projectId: args.projectId,
       actorUserId: user._id,
+    });
+
+    // Process @mentions in the description (only notify newly-added mentions)
+    await ctx.runMutation(internal.projects.processDescriptionMentions, {
+      projectId: args.projectId,
+      actorUserId: user._id,
+      newSummary: args.summary,
+      oldSummary: project.summary,
     });
   },
 });
@@ -400,6 +421,38 @@ export const backfillProject = action({
       entryId,
     });
     return { message: "Project successfully backfilled", entryId };
+  },
+});
+
+export const processDescriptionMentions = internalMutationFromFunctions({
+  args: {
+    projectId: v.id("projects"),
+    actorUserId: v.id("users"),
+    newSummary: v.optional(v.string()),
+    oldSummary: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    if (!args.newSummary) return;
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) return;
+
+    const newMentions = parseMentionsFromHtml(args.newSummary);
+    const oldMentions = new Set(parseMentionsFromHtml(args.oldSummary ?? ""));
+    const addedMentions = newMentions.filter((id) => !oldMentions.has(id));
+
+    if (addedMentions.length > 0) {
+      await emitNotificationEvent(ctx, {
+        type: "mention",
+        actorUserId: args.actorUserId,
+        mentionedUserIds: addedMentions,
+        contentType: "project",
+        contentId: args.projectId as string,
+        contentTitle: project.name,
+        projectId: args.projectId,
+        excludeUserIds: [],
+      });
+    }
   },
 });
 

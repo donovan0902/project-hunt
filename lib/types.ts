@@ -31,6 +31,7 @@ export type FocusArea = {
 export type ProjectRowData = {
   _id: Id<"projects">;
   _creationTime: number;
+  lastVersionAt?: number;
   name: string;
   summary?: string;
   team?: string;

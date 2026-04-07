@@ -16,16 +16,22 @@ import {
   renderCommentActivityEmail,
   renderFollowedCommentEmail,
   renderFollowedProjectUpdateEmail,
+  renderMentionEmail,
   type WeeklyDigestPayload,
   type SpaceActivityPayload,
   type CommentActivityPayload,
   type FollowedCommentPayload,
   type FollowedProjectUpdatePayload,
+  type MentionActivityPayload,
 } from "./emailRenderer";
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+export const EMAIL_DEDUP_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-type EmailCategory = "weeklyDigest" | "spaceActivity" | "projectActivity" | "followedProjectComment" | "followedProjectUpdate";
+type EmailCategory = "weeklyDigest" | "spaceActivity" | "projectActivity" | "followedProjectComment" | "followedProjectUpdate" | "mentions";
 type EmailRecipient = {
   name: string;
   email: string | null;
@@ -128,6 +134,16 @@ export const sendEmail = internalAction({
       const rendered = renderFollowedProjectUpdateEmail({
         recipientName: recipient.name,
         payload: args.payload as FollowedProjectUpdatePayload,
+        baseUrl,
+        profileUrl,
+      });
+      subject = rendered.subject;
+      html = rendered.html;
+      text = rendered.text;
+    } else if (args.type === "mention_activity") {
+      const rendered = renderMentionEmail({
+        recipientName: recipient.name,
+        payload: args.payload as MentionActivityPayload,
         baseUrl,
         profileUrl,
       });
@@ -258,6 +274,7 @@ export const getEmailPreferences = query({
       projectActivity: prefs?.projectActivity !== false,
       followedProjectComment: prefs?.followedProjectComment !== false,
       followedProjectUpdate: prefs?.followedProjectUpdate !== false,
+      mentions: prefs?.mentions !== false,
     };
   },
 });
@@ -269,6 +286,7 @@ export const updateEmailPreferences = mutation({
     projectActivity: v.optional(v.boolean()),
     followedProjectComment: v.optional(v.boolean()),
     followedProjectUpdate: v.optional(v.boolean()),
+    mentions: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
@@ -280,6 +298,7 @@ export const updateEmailPreferences = mutation({
       projectActivity: args.projectActivity ?? current.projectActivity,
       followedProjectComment: args.followedProjectComment ?? current.followedProjectComment,
       followedProjectUpdate: args.followedProjectUpdate ?? current.followedProjectUpdate,
+      mentions: args.mentions ?? current.mentions,
     };
 
     await ctx.db.patch(user._id, { emailPreferences: updated });

@@ -15,7 +15,8 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { EmailPreferencesSection } from "@/components/EmailPreferencesSection";
-import { ArrowBigUp, Eye, MessageSquare, Pencil, Users } from "lucide-react";
+import { ArrowBigUp, Eye, MessageSquare, Pencil } from "lucide-react";
+import { ViewsIcon } from "@/components/ViewsIcon";
 import { stripHtml } from "@/lib/utils";
 import {
   Breadcrumb,
@@ -169,24 +170,7 @@ export default function ProfilePage({
           }
         >
           <div className="min-w-0 space-y-8">
-            <div className="relative flex flex-col items-center gap-6 pr-12 text-center md:items-start md:text-left">
-              {!isOwner && email && (
-                <div className="absolute right-0 top-0 flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-10 w-10"
-                    asChild
-                  >
-                    <a
-                      href={`mailto:${email}`}
-                      aria-label={`Send email to ${profile.name}`}
-                    >
-                      <i className="bi bi-envelope text-xl text-zinc-600" aria-hidden="true" />
-                    </a>
-                  </Button>
-                </div>
-              )}
+            <div className="flex flex-col items-center gap-6 text-center md:items-start md:text-left">
               <div className="flex flex-col items-center gap-4 md:flex-row md:items-center">
                 <Avatar className="h-16 w-16 border border-white shadow-sm">
                   <AvatarImage src={profile.avatarUrlId} alt={profile.name} />
@@ -199,6 +183,21 @@ export default function ProfilePage({
                     <h1 className="text-3xl font-semibold text-zinc-900">
                       {profile.name}
                     </h1>
+                    {!isOwner && email && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        asChild
+                      >
+                        <a
+                          href={`mailto:${email}`}
+                          aria-label={`Send email to ${profile.name}`}
+                        >
+                          <i className="bi bi-envelope text-xl text-zinc-600" aria-hidden="true" />
+                        </a>
+                      </Button>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center justify-center gap-3 text-sm text-zinc-600 md:justify-start">
                     {profile.department && (
@@ -236,7 +235,7 @@ export default function ProfilePage({
                       </Badge>
                     </TabsTrigger>
                     <TabsTrigger value="following" className="gap-2">
-                      Following
+                      Watching
                       <Badge variant="secondary" className="bg-zinc-100">
                         {profile.followingCount}
                       </Badge>
@@ -271,9 +270,9 @@ export default function ProfilePage({
 
               <TabsContent value="following" className="space-y-4">
                 {followedProjects === undefined ? (
-                  <EmptyState message="Loading followed tools..." />
+                  <EmptyState message="Loading watched tools..." />
                 ) : followedProjects.length === 0 ? (
-                  <EmptyState message="Not following anything yet." />
+                  <EmptyState message="Not watching anything yet." />
                 ) : (
                   <div className="space-y-3">
                     {followedProjects.map((project) => (
@@ -358,10 +357,10 @@ function ProjectCard({
                 <MessageSquare className="h-4 w-4" aria-hidden="true" />
                 <span>{project.commentCount}</span>
                 <span className="text-zinc-300">•</span>
-                <Users className="h-4 w-4" aria-hidden="true" />
+                <Eye className="h-4 w-4" aria-hidden="true" />
                 <span>{project.followerCount}</span>
                 <span className="text-zinc-300">•</span>
-                <Eye className="h-4 w-4" aria-hidden="true" />
+                <ViewsIcon className="h-4 w-4" aria-hidden="true" />
                 <span>{project.viewCount}</span>
               </div>
             </div>

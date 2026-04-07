@@ -1,10 +1,10 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUserOrThrow, getCurrentUser } from "./users";
-import { createProjectNotification } from "./notifications";
-import { internal } from "./_generated/api";
-import { enqueueCommentEmail, enqueueReplyEmail } from "./commentNotifications";
 import { calculateHotScore, propagateHotScoreToMemberships } from "./projects";
+import { parseMentionsFromHtml } from "./mentions";
+import { emitNotificationEvent } from "./notificationEngine";
+import { incrementalAddEngagedProject } from "./userAffinities";
 
 export const addComment = mutation({
   args: {
@@ -35,59 +35,42 @@ export const addComment = mutation({
         hotScore: newHotScore,
       });
       await propagateHotScoreToMemberships(ctx, args.projectId, newHotScore);
+
+      // Incremental affinity update
+      await incrementalAddEngagedProject(ctx, user._id, args.projectId, project.userId);
     }
 
-    if (project && project.userId !== user._id) {
-      await createProjectNotification(ctx, {
-        recipientUserId: project.userId,
-        actorUserId: user._id,
-        projectId: project._id,
+    // Emit comment event — handles owner notification, reply notification, and follower fan-out
+    if (project) {
+      await emitNotificationEvent(ctx, {
         type: "comment",
+        projectId: args.projectId,
         commentId,
+        actorUserId: user._id,
+        parentCommentId: args.parentCommentId,
+        contentSnippet: args.content.slice(0, 200),
       });
 
-      await enqueueCommentEmail(ctx, {
-        contentType: "project",
-        contentId: args.projectId,
-        contentTitle: project.name,
-        contentOwnerUserId: project.userId,
-        commenterUserId: user._id,
-        commenterName: user.name,
-        commentSnippet: args.content.slice(0, 200),
-      });
-    }
+      // Emit mention event for @-mentioned users
+      const mentionedUserIds = parseMentionsFromHtml(args.content);
+      if (mentionedUserIds.length > 0) {
+        const parentComment = args.parentCommentId
+          ? await ctx.db.get(args.parentCommentId)
+          : null;
+        const excludeUserIds = [project.userId as string];
+        if (parentComment) excludeUserIds.push(parentComment.userId as string);
 
-    // Notify followers of the project about the new comment
-    await ctx.scheduler.runAfter(0, internal.notifications.notifyFollowersOfComment, {
-      projectId: args.projectId,
-      actorUserId: user._id,
-      commentId,
-    });
-
-    // Notify the parent comment author when someone replies to their comment
-    if (args.parentCommentId && project) {
-      const parentComment = await ctx.db.get(args.parentCommentId);
-      if (
-        parentComment &&
-        !parentComment.isDeleted &&
-        parentComment.userId !== user._id &&
-        parentComment.userId !== project.userId
-      ) {
-        await createProjectNotification(ctx, {
-          recipientUserId: parentComment.userId,
+        await emitNotificationEvent(ctx, {
+          type: "mention",
           actorUserId: user._id,
-          projectId: project._id,
-          type: "reply",
-          commentId,
-        });
-        await enqueueReplyEmail(ctx, {
+          mentionedUserIds,
           contentType: "project",
-          contentId: args.projectId,
+          contentId: args.projectId as string,
           contentTitle: project.name,
-          parentCommentUserId: parentComment.userId,
-          replierUserId: user._id,
-          replierName: user.name,
-          commentSnippet: args.content.slice(0, 200),
+          contextSnippet: args.content.slice(0, 200),
+          projectId: args.projectId,
+          commentId,
+          excludeUserIds,
         });
       }
     }
@@ -191,6 +174,27 @@ export const deleteComment = mutation({
       .collect();
 
     await Promise.all(existingUpvotes.map((upvote) => ctx.db.delete(upvote._id)));
+  },
+});
+
+export const editComment = mutation({
+  args: {
+    commentId: v.id("comments"),
+    content: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const comment = await ctx.db.get(args.commentId);
+    if (!comment || comment.isDeleted) {
+      throw new Error("Comment not found");
+    }
+    if (comment.userId !== user._id) {
+      throw new Error("You can only edit your own comments");
+    }
+    await ctx.db.patch(args.commentId, {
+      content: args.content,
+      editedAt: Date.now(),
+    });
   },
 });
 

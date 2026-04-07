@@ -17,7 +17,8 @@ import { RichTextContent } from "@/components/RichTextContent";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { Facepile } from "@/components/Facepile";
 import Link from "next/link";
-import { ArrowBigUp, Eye, Forward, Link2, Pencil, Plus, Tag } from "lucide-react";
+import { ArrowBigUp, Forward, Link2, MousePointerClick, Pencil, Plus, Tag } from "lucide-react";
+import { ViewsIcon } from "@/components/ViewsIcon";
 import { SpaceIcon } from "@/components/SpaceIcon";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -110,8 +111,11 @@ export default function ProjectPage({
   const toggleUpvote = useMutation(api.projects.toggleUpvote);
   const toggleFollow = useMutation(api.projects.toggleFollow);
   const trackView = useMutation(api.projects.trackView);
+  const trackLinkClick = useMutation(api.projects.trackLinkClick);
+  const linkClickCounts = useQuery(api.projects.getLinkClickCounts, { projectId });
   const addComment = useMutation(api.comments.addComment);
   const deleteComment = useMutation(api.comments.deleteComment);
+  const editComment = useMutation(api.comments.editComment);
   const toggleCommentUpvote = useMutation(api.comments.toggleCommentUpvote);
   const trackedProjectId = useRef<Id<"projects"> | null>(null);
 
@@ -292,7 +296,7 @@ export default function ProjectPage({
                 </div>
                 {isOwner && (
                   <div className="flex items-center gap-1 text-xs text-zinc-400">
-                    <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                    <ViewsIcon className="h-3.5 w-3.5" aria-hidden="true" />
                     {project.viewCount ?? 0} views
                   </div>
                 )}
@@ -352,6 +356,7 @@ export default function ProjectPage({
                         onDelete={(id) => deleteComment({ commentId: id as Id<"comments"> })}
                         onToggleUpvote={(id) => toggleCommentUpvote({ commentId: id as Id<"comments"> })}
                         onSubmitReply={(content, parentId) => addComment({ projectId, content, parentCommentId: parentId as Id<"comments"> })}
+                        onEdit={(id, content) => editComment({ commentId: id as Id<"comments">, content })}
                       />
                     ))}
                   </div>
@@ -447,7 +452,7 @@ export default function ProjectPage({
                 {((versions && versions.length > 0) || isOwner) && (
                   <div className="min-w-0 space-y-3 border-t border-zinc-300 pt-5">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                      <p className="text-sm font-semibold text-zinc-800">
                         Versions
                       </p>
                       {isOwner && (
@@ -487,25 +492,39 @@ export default function ProjectPage({
                   const filesToShow = activeVersionId ? (selectedVersionFiles ?? []) : (projectFiles ?? []);
                   return (activeLinks.length > 0 || filesToShow.length > 0) && (
                     <div className="space-y-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                        Links &amp; Downloads
-                      </p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-zinc-800">
+                          Links &amp; Downloads
+                        </p>
+                        <MousePointerClick className="h-4 w-4 text-zinc-500" aria-label="Click counts" />
+                      </div>
                       <div className="space-y-2">
                         {filesToShow.length > 0 && (
-                          <ProjectFileDownload files={filesToShow} />
+                          <ProjectFileDownload
+                            files={filesToShow}
+                            projectId={projectId}
+                            clickCounts={linkClickCounts ?? {}}
+                          />
                         )}
-                        {activeLinks.map((pl, i) => (
-                          <a
-                            key={i}
-                            href={pl.href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 text-m font-medium text-zinc-700 hover:text-zinc-900 hover:underline"
-                          >
-                            <Link2 className="h-5 w-5 text-zinc-400" aria-hidden="true" />
-                            {pl.label}
-                          </a>
-                        ))}
+                        {activeLinks.map((pl, i) => {
+                          const count = linkClickCounts?.[pl.href] ?? 0;
+                          return (
+                            <a
+                              key={i}
+                              href={pl.href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-700 hover:underline"
+                              onClick={() => void trackLinkClick({ projectId, resourceId: pl.href, resourceType: "link" })}
+                            >
+                              <Link2 className="h-4 w-4 text-zinc-400 shrink-0" aria-hidden="true" />
+                              <span className="flex-1 min-w-0 truncate">{pl.label}</span>
+                              {count > 0 && (
+                                <span className="text-zinc-500 shrink-0 ml-auto pl-2">{count}</span>
+                              )}
+                            </a>
+                          );
+                        })}
                       </div>
                     </div>
                   );

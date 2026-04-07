@@ -295,11 +295,17 @@ export const gatherUserDigestData = internalQuery({
 
       const topProjects: SpaceActivity["topProjects"] = [];
       for (const project of newSpaceProjects.slice(0, MAX_TOP_PROJECTS_PER_SPACE)) {
-        const creator = await ctx.db.get(project.userId);
+        const [creator, upvoteRecords] = await Promise.all([
+          ctx.db.get(project.userId),
+          ctx.db
+            .query("upvotes")
+            .withIndex("by_project", (q) => q.eq("projectId", project._id))
+            .collect(),
+        ]);
         topProjects.push({
           projectId: project._id,
           projectName: project.name,
-          upvotes: project.upvotes,
+          upvotes: upvoteRecords.length,
           creatorName: creator?.name ?? "Unknown",
         });
       }
@@ -348,14 +354,18 @@ export const gatherUserDigestData = internalQuery({
 
     const topProjects: PlatformHighlights["topProjects"] = [];
     for (const project of trendingProjectDocs) {
-      const [creator, spaces] = await Promise.all([
+      const [creator, spaces, upvoteRecords] = await Promise.all([
         ctx.db.get(project.userId),
         getAllSpacesForProject(ctx, project._id),
+        ctx.db
+          .query("upvotes")
+          .withIndex("by_project", (q) => q.eq("projectId", project._id))
+          .collect(),
       ]);
       topProjects.push({
         projectId: project._id,
         projectName: project.name,
-        upvotes: project.upvotes,
+        upvotes: upvoteRecords.length,
         creatorName: creator?.name ?? "Unknown",
         spaceName: spaces.primary?.name ?? null,
         spaceIcon: spaces.primary?.icon ?? null,

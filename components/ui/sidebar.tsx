@@ -607,7 +607,11 @@ function SidebarMenuSkeleton({
   showIcon?: boolean
 }) {
   // Random width between 50 to 90%.
+  // shadcn/ui-derived component; intentionally suppressing this lint here
+   
   const width = React.useMemo(() => {
+    // shadcn/ui-derived component; intentionally suppressing this lint here
+    // eslint-disable-next-line react-hooks/purity
     return `${Math.floor(Math.random() * 40) + 50}%`
   }, [])
 

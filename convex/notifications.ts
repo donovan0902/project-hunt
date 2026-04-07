@@ -1,278 +1,12 @@
-import type { MutationCtx } from "./_generated/server";
-import { internalMutation, mutation, query } from "./_generated/server";
+/**
+ * Notification read-side queries.
+ *
+ * All write-side notification logic (creation, aggregation, email enqueueing)
+ * has been centralized in notificationEngine.ts.
+ */
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
 import { getCurrentUser, getCurrentUserOrThrow } from "./users";
-import { enqueueFollowedCommentEmail, enqueueFollowedProjectUpdateEmail } from "./followNotifications";
-
-const NOTIFICATION_HISTORY_LIMIT = 50;
-
-async function pruneNotifications(
-  ctx: MutationCtx,
-  recipientUserId: Id<"users">
-) {
-  const notifications = await ctx.db
-    .query("notifications")
-    .withIndex("by_recipient_last_activity", (q) =>
-      q.eq("recipientUserId", recipientUserId)
-    )
-    .order("desc")
-    .collect();
-
-  const overflow = notifications.slice(NOTIFICATION_HISTORY_LIMIT);
-  await Promise.all(overflow.map((notification) => ctx.db.delete(notification._id)));
-}
-
-export async function createProjectNotification(
-  ctx: MutationCtx,
-  args: {
-    recipientUserId: Id<"users">;
-    actorUserId: Id<"users">;
-    projectId: Id<"projects">;
-    type: "comment" | "reply" | "follow" | "project_update" | "followed_project_comment";
-    commentId?: Id<"comments">;
-  }
-) {
-  const now = Date.now();
-  await ctx.db.insert("notifications", {
-    recipientUserId: args.recipientUserId,
-    actorUserId: args.actorUserId,
-    projectId: args.projectId,
-    type: args.type,
-    commentId: args.commentId,
-    isRead: false,
-    createdAt: now,
-    lastActivityAt: now,
-  });
-
-  await pruneNotifications(ctx, args.recipientUserId);
-}
-
-export const notifyProjectUpdate = internalMutation({
-  args: {
-    projectId: v.id("projects"),
-    actorUserId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    const project = await ctx.db.get(args.projectId);
-    if (!project) {
-      return;
-    }
-
-    const follows = await ctx.db
-      .query("adoptions")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .collect();
-
-    const recipients = Array.from(
-      new Set(follows.map((follow) => follow.userId))
-    ).filter((userId) => userId !== args.actorUserId);
-
-    if (recipients.length === 0) {
-      return;
-    }
-
-    const actor = await ctx.db.get(args.actorUserId);
-    const actorName = actor?.name ?? "Someone";
-
-    await Promise.all(
-      recipients.map(async (recipientUserId) => {
-        await createProjectNotification(ctx, {
-          recipientUserId,
-          actorUserId: args.actorUserId,
-          projectId: args.projectId,
-          type: "project_update",
-        });
-        await enqueueFollowedProjectUpdateEmail(ctx, {
-          recipientUserId,
-          actorUserId: args.actorUserId,
-          projectId: args.projectId,
-          projectName: project.name,
-          actorName,
-        });
-      })
-    );
-  },
-});
-
-async function updateUpvoteNotification(
-  ctx: MutationCtx,
-  args: {
-    recipientUserId: Id<"users">;
-    projectId: Id<"projects">;
-    touch: boolean;
-  }
-) {
-  const existing = await ctx.db
-    .query("notifications")
-    .withIndex("by_recipient_project_type", (q) =>
-      q.eq("recipientUserId", args.recipientUserId)
-        .eq("projectId", args.projectId)
-        .eq("type", "upvote")
-    )
-    .unique();
-
-  if (!existing && !args.touch) {
-    return;
-  }
-
-  const upvotes = await ctx.db
-    .query("upvotes")
-    .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-    .collect();
-
-  const filteredUpvotes = upvotes.filter(
-    (upvote) => upvote.userId !== args.recipientUserId
-  );
-  const count = filteredUpvotes.length;
-
-  if (count === 0) {
-    if (existing) {
-      await ctx.db.delete(existing._id);
-    }
-    return;
-  }
-
-  const latestUpvote = filteredUpvotes.sort(
-    (a, b) => b.createdAt - a.createdAt
-  )[0];
-
-  if (!latestUpvote) {
-    return;
-  }
-
-  const now = Date.now();
-
-  if (existing) {
-    const patch: {
-      count: number;
-      actorUserId: Id<"users">;
-      lastActivityAt?: number;
-      isRead?: boolean;
-    } = {
-      count,
-      actorUserId: latestUpvote.userId,
-    };
-
-    if (args.touch) {
-      patch.lastActivityAt = now;
-      patch.isRead = false;
-    }
-
-    await ctx.db.patch(existing._id, patch);
-    return;
-  }
-
-  await ctx.db.insert("notifications", {
-    recipientUserId: args.recipientUserId,
-    actorUserId: latestUpvote.userId,
-    projectId: args.projectId,
-    type: "upvote",
-    count,
-    isRead: false,
-    createdAt: now,
-    lastActivityAt: now,
-  });
-
-  await pruneNotifications(ctx, args.recipientUserId);
-}
-
-export const notifyFollowersOfComment = internalMutation({
-  args: {
-    projectId: v.id("projects"),
-    actorUserId: v.id("users"),
-    commentId: v.id("comments"),
-  },
-  handler: async (ctx, args) => {
-    const project = await ctx.db.get(args.projectId);
-    if (!project) return;
-
-    const follows = await ctx.db
-      .query("adoptions")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .collect();
-
-    // Notify followers who are neither the commenter nor the project owner
-    const recipientIds = Array.from(new Set(follows.map((f) => f.userId))).filter(
-      (userId) => userId !== args.actorUserId && userId !== project.userId
-    );
-
-    if (recipientIds.length === 0) return;
-
-    const [actor, comment] = await Promise.all([
-      ctx.db.get(args.actorUserId),
-      ctx.db.get(args.commentId),
-    ]);
-    const commenterName = actor?.name ?? "Someone";
-    const commentSnippet = (comment?.content ?? "").slice(0, 200);
-
-    const now = Date.now();
-    await Promise.all(
-      recipientIds.map(async (recipientUserId) => {
-        const existing = await ctx.db
-          .query("notifications")
-          .withIndex("by_recipient_project_type", (q) =>
-            q
-              .eq("recipientUserId", recipientUserId)
-              .eq("projectId", args.projectId)
-              .eq("type", "followed_project_comment")
-          )
-          .unique();
-
-        if (existing) {
-          await ctx.db.patch(existing._id, {
-            count: (existing.count ?? 0) + 1,
-            actorUserId: args.actorUserId,
-            commentId: args.commentId,
-            lastActivityAt: now,
-            isRead: false,
-          });
-        } else {
-          await ctx.db.insert("notifications", {
-            recipientUserId,
-            actorUserId: args.actorUserId,
-            projectId: args.projectId,
-            type: "followed_project_comment",
-            commentId: args.commentId,
-            count: 1,
-            isRead: false,
-            createdAt: now,
-            lastActivityAt: now,
-          });
-          await pruneNotifications(ctx, recipientUserId);
-        }
-        await enqueueFollowedCommentEmail(ctx, {
-          recipientUserId,
-          actorUserId: args.actorUserId,
-          projectId: args.projectId,
-          projectName: project.name,
-          commenterName,
-          commentSnippet,
-        });
-      })
-    );
-  },
-});
-
-export async function upsertUpvoteNotification(
-  ctx: MutationCtx,
-  args: {
-    recipientUserId: Id<"users">;
-    projectId: Id<"projects">;
-  }
-) {
-  await updateUpvoteNotification(ctx, { ...args, touch: true });
-}
-
-export async function syncUpvoteNotification(
-  ctx: MutationCtx,
-  args: {
-    recipientUserId: Id<"users">;
-    projectId: Id<"projects">;
-  }
-) {
-  await updateUpvoteNotification(ctx, { ...args, touch: false });
-}
 
 export const getUnreadNotificationCount = query({
   args: {},
@@ -313,16 +47,18 @@ export const getNotifications = query({
 
     return await Promise.all(
       notifications.map(async (notification) => {
-        const [actor, project, comment] = await Promise.all([
+        const [actor, project, comment, thread] = await Promise.all([
           ctx.db.get(notification.actorUserId),
-          ctx.db.get(notification.projectId),
+          notification.projectId ? ctx.db.get(notification.projectId) : null,
           notification.commentId ? ctx.db.get(notification.commentId) : null,
+          notification.threadId ? ctx.db.get(notification.threadId) : null,
         ]);
 
         return {
           _id: notification._id,
           type: notification.type,
-          projectId: notification.projectId,
+          projectId: notification.projectId ?? null,
+          threadId: notification.threadId ?? null,
           commentId: notification.commentId,
           count: notification.count,
           isRead: notification.isRead,
@@ -330,7 +66,9 @@ export const getNotifications = query({
           lastActivityAt: notification.lastActivityAt,
           actorName: actor?.name ?? "Someone",
           actorAvatar: actor?.avatarUrlId ?? "",
-          projectName: project?.name ?? "your tool",
+          projectName: project?.name ?? null,
+          threadTitle: thread?.title ?? null,
+          threadCommentId: notification.threadCommentId ?? null,
           isReply: Boolean(comment?.parentCommentId),
         };
       })

@@ -8,8 +8,9 @@ import { CommentForm } from "./CommentForm";
 import { Id } from "@/convex/_generated/dataModel";
 import { useCurrentUser } from "@/app/useCurrentUser";
 import Link from "next/link";
-import { ArrowBigUp, MessageSquare, Minus, Plus, Trash2 } from "lucide-react";
+import { ArrowBigUp, MessageSquare, Minus, Pencil, Plus, Trash2 } from "lucide-react";
 import { getRelativeTime } from "@/lib/utils";
+import { RichTextContent } from "@/components/RichTextContent";
 
 export interface BaseComment {
   _id: string;
@@ -17,6 +18,7 @@ export interface BaseComment {
   content: string;
   parentCommentId?: string;
   createdAt: number;
+  editedAt?: number;
   isDeleted?: boolean;
   upvotes?: number;
   hasUpvoted?: boolean;
@@ -30,6 +32,7 @@ interface CommentThreadProps {
   onDelete: (commentId: string) => Promise<unknown>;
   onToggleUpvote: (commentId: string) => Promise<unknown>;
   onSubmitReply: (content: string, parentCommentId: string) => Promise<unknown>;
+  onEdit: (commentId: string, content: string) => Promise<unknown>;
   depth?: number;
 }
 
@@ -53,10 +56,12 @@ export function CommentThread({
   onDelete,
   onToggleUpvote,
   onSubmitReply,
+  onEdit,
   depth = 0,
 }: CommentThreadProps) {
   const { user } = useCurrentUser();
   const [showReplyForm, setShowReplyForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTogglingUpvote, setIsTogglingUpvote] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -187,6 +192,7 @@ export function CommentThread({
               onDelete={onDelete}
               onToggleUpvote={onToggleUpvote}
               onSubmitReply={onSubmitReply}
+              onEdit={onEdit}
               depth={depth + 1}
             />
           </div>
@@ -282,10 +288,25 @@ export function CommentThread({
               </Link>
               <span className="text-zinc-300">&bull;</span>
               <span>{getRelativeTime(comment.createdAt)}</span>
+              {comment.editedAt && (
+                <span className="text-zinc-400 italic">· edited</span>
+              )}
             </div>
-            <p className="mt-0.5 text-sm leading-5 text-zinc-700 whitespace-pre-wrap break-words">
-              {comment.content}
-            </p>
+            {showEditForm ? (
+              <div className="mt-1 mb-2">
+                <CommentForm
+                  onSubmit={async (content) => {
+                    await onEdit(comment._id, content);
+                    setShowEditForm(false);
+                  }}
+                  onCancel={() => setShowEditForm(false)}
+                  initialValue={comment.content}
+                  submitText="Save"
+                />
+              </div>
+            ) : (
+              <RichTextContent html={comment.content} className="mt-0.5 text-zinc-700" />
+            )}
             <div className="mt-1 flex items-center gap-0.5 -ml-1.5">
               <Button
                 variant="ghost"
@@ -314,16 +335,27 @@ export function CommentThread({
                 </Button>
               )}
               {isOwner && (
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="gap-1 text-xs text-zinc-400 hover:!bg-zinc-200 active:!bg-zinc-300 hover:text-red-600"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Delete
-                </Button>
+                <>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => { setShowEditForm(!showEditForm); setShowReplyForm(false); }}
+                    className="gap-1 text-xs text-zinc-400 hover:!bg-zinc-200 active:!bg-zinc-300 hover:text-zinc-600"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="gap-1 text-xs text-zinc-400 hover:!bg-zinc-200 active:!bg-zinc-300 hover:text-red-600"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete
+                  </Button>
+                </>
               )}
             </div>
           </div>

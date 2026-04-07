@@ -6,7 +6,6 @@ export default defineSchema({
     name: v.string(),
     summary: v.optional(v.string()),
     teamId: v.optional(v.id("teams")),
-    upvotes: v.number(),
     viewCount: v.optional(v.number()),
     entryId: v.optional(v.string()),
     status: v.union(v.literal("pending"), v.literal("active")),
@@ -29,6 +28,7 @@ export default defineSchema({
     .searchIndex("allFields", { searchField: "allFields" })
     .index("by_entryId", ["entryId"])
     .index("by_status", ["status"])
+    .index("by_status_lastVersionAt", ["status", "lastVersionAt"])
     .index("by_userId", ["userId"])
     .index("by_teamId", ["teamId"])
     .index("by_status_engagement", ["status", "engagementScore"])
@@ -58,7 +58,9 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_project", ["projectId"])
-    .index("by_project_and_user", ["projectId", "userId"]),
+    .index("by_project_and_user", ["projectId", "userId"])
+    .index("by_userId", ["userId"])
+    .index("by_userId_createdAt", ["userId", "createdAt"]),
   adoptions: defineTable({
     projectId: v.id("projects"),
     userId: v.id("users"),
@@ -66,7 +68,8 @@ export default defineSchema({
   })
     .index("by_project", ["projectId"])
     .index("by_project_and_user", ["projectId", "userId"])
-    .index("by_user", ["userId"]),
+    .index("by_user", ["userId"])
+    .index("by_user_createdAt", ["userId", "createdAt"]),
   projectViews: defineTable({
     projectId: v.id("projects"),
     viewerId: v.string(),
@@ -74,18 +77,30 @@ export default defineSchema({
   })
     .index("by_project", ["projectId"])
     .index("by_project_and_viewer", ["projectId", "viewerId"]),
+  linkClickCounts: defineTable({
+    projectId: v.id("projects"),
+    resourceId: v.string(),
+    resourceType: v.union(v.literal("link"), v.literal("file")),
+    count: v.number(),
+    lastClickedAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_resource", ["projectId", "resourceId"]),
   comments: defineTable({
     projectId: v.id("projects"),
     userId: v.id("users"),
     content: v.string(),
     parentCommentId: v.optional(v.id("comments")),
     createdAt: v.number(),
+    editedAt: v.optional(v.number()),
     isDeleted: v.optional(v.boolean()),
     upvotes: v.optional(v.number()),
   })
     .index("by_project", ["projectId"])
     .index("by_parent", ["parentCommentId"])
-    .index("by_user", ["userId"]),
+    .index("by_user", ["userId"])
+    .index("by_user_createdAt", ["userId", "createdAt"])
+    .index("by_user_project", ["userId", "projectId"]),
   commentUpvotes: defineTable({
     commentId: v.id("comments"),
     userId: v.id("users"),
@@ -97,7 +112,9 @@ export default defineSchema({
   notifications: defineTable({
     recipientUserId: v.id("users"),
     actorUserId: v.id("users"),
-    projectId: v.id("projects"),
+    projectId: v.optional(v.id("projects")),
+    threadId: v.optional(v.id("threads")),
+    threadCommentId: v.optional(v.id("threadComments")),
     type: v.union(
       v.literal("comment"),
       v.literal("reply"),
@@ -106,6 +123,7 @@ export default defineSchema({
       v.literal("follow"),
       v.literal("project_update"),
       v.literal("followed_project_comment"),
+      v.literal("mention"),
     ),
     commentId: v.optional(v.id("comments")),
     count: v.optional(v.number()),
@@ -116,7 +134,8 @@ export default defineSchema({
     .index("by_recipient", ["recipientUserId"])
     .index("by_recipient_and_read", ["recipientUserId", "isRead"])
     .index("by_recipient_last_activity", ["recipientUserId", "lastActivityAt"])
-    .index("by_recipient_project_type", ["recipientUserId", "projectId", "type"]),
+    .index("by_recipient_project_type", ["recipientUserId", "projectId", "type"])
+    .index("by_recipient_thread_type", ["recipientUserId", "threadId", "type"]),
   users: defineTable({
     name: v.string(),
     email: v.optional(v.string()),
@@ -134,14 +153,17 @@ export default defineSchema({
       projectActivity: v.optional(v.boolean()),
       followedProjectComment: v.optional(v.boolean()),
       followedProjectUpdate: v.optional(v.boolean()),
+      mentions: v.optional(v.boolean()),
     })),
   })
+    .searchIndex("search_name", { searchField: "name" })
     .index("by_teamId", ["teamId"])
     .index("by_userIntent", ["userIntent"])
     .index("by_externalUserId", ["externalUserId"])
     .index("by_email", ["email"])
     .index("by_email_lower", ["emailLower"])
-    .index("by_department", ["department"]),
+    .index("by_department", ["department"])
+    .index("by_onboardingCompleted", ["onboardingCompleted"]),
   userFocusAreas: defineTable({
     userId: v.id("users"),
     focusAreaId: v.id("focusAreas"),
@@ -178,6 +200,7 @@ export default defineSchema({
     createdAt: v.number(),
     entryId: v.optional(v.string()),
     allFields: v.optional(v.string()),
+    imageStorageIds: v.optional(v.array(v.id("_storage"))),
   })
     .searchIndex("allFields", { searchField: "allFields" })
     .index("by_focusArea", ["focusAreaId"])
@@ -198,6 +221,7 @@ export default defineSchema({
     content: v.string(),
     parentCommentId: v.optional(v.id("threadComments")),
     createdAt: v.number(),
+    editedAt: v.optional(v.number()),
     isDeleted: v.optional(v.boolean()),
     upvotes: v.optional(v.number()),
   })
@@ -254,4 +278,23 @@ export default defineSchema({
     uploadedAt: v.number(),
   })
     .index("by_version", ["versionId"]),
+  userAffinities: defineTable({
+    userId: v.id("users"),
+    followedSpaceIds: v.array(v.id("focusAreas")),
+    engagedCreatorIds: v.array(v.id("users")),
+    engagedProjectIds: v.array(v.id("projects")),
+    department: v.optional(v.string()),
+    spaceLastEngagedAt: v.optional(v.record(v.string(), v.number())),
+    creatorLastEngagedAt: v.optional(v.record(v.string(), v.number())),
+    lastRecomputedAt: v.number(),
+  })
+    .index("by_userId", ["userId"]),
+  userFeedEntries: defineTable({
+    userId: v.id("users"),
+    projectId: v.id("projects"),
+    personalizedScore: v.number(),
+    computedAt: v.number(),
+  })
+    .index("by_userId_personalizedScore", ["userId", "personalizedScore"])
+    .index("by_userId_projectId", ["userId", "projectId"]),
 });

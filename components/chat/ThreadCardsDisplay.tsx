@@ -76,7 +76,7 @@ export function ThreadCardsDisplay({
                     )}
                     <span>{getRelativeTime(thread.createdAt)}</span>
                   </div>
-                  <CardTitle className="flex items-center gap-1 text-sm font-medium">
+                  <CardTitle className="flex items-center gap-1 text-sm font-medium min-w-0 overflow-hidden">
                     <span className="truncate">{thread.title}</span>
                     <ArrowUpRight className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
                   </CardTitle>

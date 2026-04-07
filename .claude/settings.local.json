@@ -28,7 +28,8 @@
       "Bash(gh pr:*)",
       "Bash(export PATH=\"/c/Program Files/nodejs:$PATH\")",
       "Bash(where npm)",
-      "Bash(npm install)"
+      "Bash(npm install)",
+      "Bash(npm run:*)"
     ]
   }
 }

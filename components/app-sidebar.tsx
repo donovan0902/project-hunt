@@ -5,7 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { CreateFocusAreaDialog } from "./CreateFocusAreaDialog";
 import { SpaceIcon } from "./SpaceIcon";
-import { Plus, PlusCircle, MessageSquarePlus, Info, Home, BookOpen } from "lucide-react";
+import { Plus, PlusCircle, MessageSquarePlus, Info, Home, BookOpen, UserCheck } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -22,9 +22,15 @@ import {
 } from "@/components/ui/sidebar";
 
 function SidebarSpaces() {
-  const focusAreas = useQuery(api.focusAreas.listActive);
+  const focusAreas = useQuery(api.focusAreas.listActiveWithFollowStatus);
 
   const loading = focusAreas === undefined;
+
+  const sorted = focusAreas
+    ? [...focusAreas].sort((a, b) =>
+        a.isFollowing === b.isFollowing ? 0 : a.isFollowing ? -1 : 1
+      )
+    : [];
 
   return (
     <SidebarGroup className="p-0">
@@ -44,15 +50,18 @@ function SidebarSpaces() {
               <SidebarMenuSkeleton />
               <SidebarMenuSkeleton />
             </>
-          ) : focusAreas && focusAreas.length > 0 ? (
-            focusAreas.map((area) => (
+          ) : sorted.length > 0 ? (
+            sorted.map((area) => (
               <SidebarMenuItem key={area._id}>
                 <SidebarMenuButton asChild>
-                  <Link href={`/space/${area._id}`}>
+                  <Link href={`/space/${area._id}`} title={`g/${area.name}`}>
                     <SpaceIcon icon={area.icon} name={area.name} size="sm" />
-                    <span className="text-zinc-500 font-mono text-xs">
+                    <span className="text-zinc-500 font-mono text-xs line-clamp-2 overflow-hidden">
                       g/{area.name}
                     </span>
+                    {area.isFollowing && (
+                      <UserCheck className="ml-auto h-4 w-4 text-zinc-400 shrink-0" />
+                    )}
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

@@ -115,7 +115,7 @@ export function ProjectCardsDisplay({
                       )}
                     </div>
                     <CardHeader className="space-y-1 px-3 pb-3 pt-2">
-                      <CardTitle className="flex items-center gap-1 text-sm font-medium">
+                      <CardTitle className="flex items-center gap-1 text-sm font-medium min-w-0 overflow-hidden">
                         <span className="truncate">{project.name}</span>
                         <ArrowUpRight className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
                       </CardTitle>

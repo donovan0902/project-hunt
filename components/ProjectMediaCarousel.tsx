@@ -222,8 +222,8 @@ function MediaSlide({
 
   if (!media.url) return null;
   const isVideo = media.type === "video";
-  const multiItemHeightClass = isCompactPreview ? "h-[320px]" : "h-[500px]";
-  const singleItemMaxHeightClass = isCompactPreview ? "max-h-[320px]" : "max-h-[500px]";
+  const multiItemHeightClass = isCompactPreview ? "h-[240px]" : "h-[320px]";
+  const singleItemMaxHeightClass = isCompactPreview ? "max-h-[240px]" : "max-h-[320px]";
 
   const handleVideoClick = (e: React.MouseEvent) => {
     e.stopPropagation();

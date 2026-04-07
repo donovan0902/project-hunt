@@ -2,13 +2,10 @@ import { mutation, query } from "../_generated/server";
 import { internalMutation as internalMutationFromFunctions } from "../functions";
 import { v } from "convex/values";
 import { getCurrentUserOrThrow, getCurrentUser } from "../users";
-import {
-  createProjectNotification,
-  syncUpvoteNotification,
-  upsertUpvoteNotification,
-} from "../notifications";
+import { emitNotificationEvent } from "../notificationEngine";
 import { calculateHotScore } from "./helpers";
 import { propagateHotScoreToMemberships } from "./spaces";
+import { incrementalAddEngagedProject, incrementalRemoveEngagedProject } from "../userAffinities";
 
 export const trackView = mutation({
   args: {
@@ -68,11 +65,15 @@ export const toggleUpvote = mutation({
       });
       await propagateHotScoreToMemberships(ctx, args.projectId, newHotScore);
       if (project.userId !== user._id) {
-        await syncUpvoteNotification(ctx, {
-          recipientUserId: project.userId,
+        await emitNotificationEvent(ctx, {
+          type: "upvote",
           projectId: args.projectId,
+          actorUserId: user._id,
+          isRemoval: true,
         });
       }
+      // Incremental affinity update
+      await incrementalRemoveEngagedProject(ctx, user._id, args.projectId);
     } else {
       const now = Date.now();
       await ctx.db.insert("upvotes", {
@@ -88,11 +89,15 @@ export const toggleUpvote = mutation({
       });
       await propagateHotScoreToMemberships(ctx, args.projectId, newHotScore);
       if (project.userId !== user._id) {
-        await upsertUpvoteNotification(ctx, {
-          recipientUserId: project.userId,
+        await emitNotificationEvent(ctx, {
+          type: "upvote",
           projectId: args.projectId,
+          actorUserId: user._id,
+          isRemoval: false,
         });
       }
+      // Incremental affinity update
+      await incrementalAddEngagedProject(ctx, user._id, args.projectId, project.userId);
     }
   },
 });
@@ -115,6 +120,7 @@ export const toggleFollow = mutation({
     }
     if (existingFollow) {
       await ctx.db.delete(existingFollow._id);
+      await incrementalRemoveEngagedProject(ctx, user._id, args.projectId);
       return { followed: false };
     } else {
       await ctx.db.insert("adoptions", {
@@ -123,13 +129,13 @@ export const toggleFollow = mutation({
         createdAt: Date.now(),
       });
       if (project.userId !== user._id) {
-        await createProjectNotification(ctx, {
-          recipientUserId: project.userId,
-          actorUserId: user._id,
-          projectId: project._id,
+        await emitNotificationEvent(ctx, {
           type: "follow",
+          projectId: project._id,
+          actorUserId: user._id,
         });
       }
+      await incrementalAddEngagedProject(ctx, user._id, args.projectId, project.userId);
       return { followed: true };
     }
   },
@@ -188,6 +194,53 @@ export const getFollowers = query({
       })
     );
     return followersWithInfo;
+  },
+});
+
+export const trackLinkClick = mutation({
+  args: {
+    projectId: v.id("projects"),
+    resourceId: v.string(),
+    resourceType: v.union(v.literal("link"), v.literal("file")),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("linkClickCounts")
+      .withIndex("by_project_resource", (q) =>
+        q.eq("projectId", args.projectId).eq("resourceId", args.resourceId)
+      )
+      .first();
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        count: existing.count + 1,
+        lastClickedAt: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("linkClickCounts", {
+        projectId: args.projectId,
+        resourceId: args.resourceId,
+        resourceType: args.resourceType,
+        count: 1,
+        lastClickedAt: Date.now(),
+      });
+    }
+  },
+});
+
+export const getLinkClickCounts = query({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const rows = await ctx.db
+      .query("linkClickCounts")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    const result: Record<string, number> = {};
+    for (const row of rows) {
+      result[row.resourceId] = row.count;
+    }
+    return result;
   },
 });
 
