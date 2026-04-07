@@ -29,7 +29,11 @@
       "Bash(export PATH=\"/c/Program Files/nodejs:$PATH\")",
       "Bash(where npm)",
       "Bash(npm install)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "mcp__873e7abe-ed1f-49c0-8bf5-050e4c8de8fc__list_teams",
+      "mcp__873e7abe-ed1f-49c0-8bf5-050e4c8de8fc__list_projects",
+      "mcp__873e7abe-ed1f-49c0-8bf5-050e4c8de8fc__list_deployments",
+      "mcp__873e7abe-ed1f-49c0-8bf5-050e4c8de8fc__get_deployment_build_logs"
     ]
   }
 }
