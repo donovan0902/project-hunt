@@ -383,6 +383,120 @@ export const backfillAllFeeds = internalMutation({
   },
 });
 
+// ─── New-project fan-out ────────────────────────────────────────────────────
+// When a project is confirmed, inject it into all users' precomputed feeds
+// immediately so it appears without waiting for the next 6-hour cron cycle.
+
+const INJECT_BATCH_SIZE = 100;
+
+export const injectNewProjectIntoFeeds = internalMutation({
+  args: {
+    projectId: v.id("projects"),
+    cursor: v.optional(v.union(v.string(), v.null())),
+  },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project || project.status !== "active") return;
+
+    const now = Date.now();
+
+    // Shared reads: project's space memberships + creator (same for all users)
+    const memberships = await ctx.db
+      .query("projectSpaces")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    const creator = await ctx.db.get(project.userId);
+
+    // Paginate through all userAffinities docs
+    const result = await ctx.db
+      .query("userAffinities")
+      .paginate({ numItems: INJECT_BATCH_SIZE, cursor: args.cursor ?? null });
+
+    for (const affinity of result.page) {
+      // Skip if user already has an entry for this project
+      const existingEntry = await ctx.db
+        .query("userFeedEntries")
+        .withIndex("by_userId_projectId", (q) =>
+          q.eq("userId", affinity.userId).eq("projectId", args.projectId)
+        )
+        .first();
+      if (existingEntry) continue;
+
+      // Score the project against this user's affinity profile
+      const followedSpaceSet = new Set(
+        affinity.followedSpaceIds.map((id) => id as string)
+      );
+      const engagedCreatorSet = new Set(
+        affinity.engagedCreatorIds.map((id) => id as string)
+      );
+      const engagedProjectSet = new Set(
+        affinity.engagedProjectIds.map((id) => id as string)
+      );
+      const spaceLastEngagedAt = affinity.spaceLastEngagedAt ?? {};
+      const creatorLastEngagedAt = affinity.creatorLastEngagedAt ?? {};
+
+      let boost = 0;
+      let spaceBoostCount = 0;
+      for (const m of memberships) {
+        const spaceId = m.focusAreaId as string;
+        if (followedSpaceSet.has(spaceId)) {
+          boost += SPACE_BOOST * recencyWeight(spaceLastEngagedAt[spaceId], now);
+          spaceBoostCount++;
+          if (spaceBoostCount >= 2) break;
+        } else if (spaceLastEngagedAt[spaceId] !== undefined) {
+          boost +=
+            IMPLICIT_SPACE_BOOST *
+            recencyWeight(spaceLastEngagedAt[spaceId], now);
+          spaceBoostCount++;
+          if (spaceBoostCount >= 2) break;
+        }
+      }
+
+      if (engagedCreatorSet.has(project.userId as string)) {
+        boost +=
+          CREATOR_BOOST *
+          recencyWeight(
+            creatorLastEngagedAt[project.userId as string],
+            now
+          );
+      }
+
+      if (
+        affinity.department &&
+        creator?.department === affinity.department
+      ) {
+        boost += DEPARTMENT_BOOST;
+      }
+
+      if (engagedProjectSet.has(args.projectId as string)) {
+        boost += ENGAGED_PENALTY;
+      }
+
+      const clampedBoost = clamp(boost, MIN_BOOST, MAX_BOOST);
+      const personalizedScore = (project.hotScore ?? 0) * (1 + clampedBoost);
+
+      await ctx.db.insert("userFeedEntries", {
+        userId: affinity.userId,
+        projectId: args.projectId,
+        personalizedScore,
+        computedAt: now,
+      });
+    }
+
+    // Continue with next batch if there are more users
+    if (!result.isDone) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.userAffinities.injectNewProjectIntoFeeds,
+        {
+          projectId: args.projectId,
+          cursor: result.continueCursor,
+        }
+      );
+    }
+  },
+});
+
 // ─── Incremental update helpers ──────────────────────────────────────────────
 
 export async function incrementalAddEngagedProject(

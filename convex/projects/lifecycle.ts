@@ -213,6 +213,13 @@ export const confirmProject = mutation({
       });
     }
 
+    // Inject into all users' personalized feeds immediately
+    await ctx.scheduler.runAfter(
+      0,
+      internal.userAffinities.injectNewProjectIntoFeeds,
+      { projectId: args.projectId }
+    );
+
     // Process @mentions in the description when project goes live
     if (project.summary) {
       const mentionedUserIds = parseMentionsFromHtml(project.summary);
