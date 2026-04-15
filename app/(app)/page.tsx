@@ -1,20 +1,23 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, usePaginatedQuery } from "convex/react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { motion, LayoutGroup } from "motion/react";
 import React from "react";
 
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrentUser } from "@/app/useCurrentUser";
-import { ProjectRow } from "@/components/ProjectRow";
-import type { ProjectRowData } from "@/lib/types";
+import { ProjectFeedList } from "@/components/ProjectFeedList";
+import {
+  ProjectFeedViewToggle,
+  type CatalogSurfaceView,
+} from "@/components/ProjectFeedViewToggle";
+import type { FocusArea, ProjectRowData } from "@/lib/types";
 import { ArrowBigUp, MessageCircle, PlusCircle } from "lucide-react";
 import { SpaceIcon } from "@/components/SpaceIcon";
 import { cn } from "@/lib/utils";
@@ -24,6 +27,8 @@ type FeedTab = "for-you" | "trending" | "newest";
 export default function Home() {
   const { isAuthenticated } = useCurrentUser();
   const [activeTab, setActiveTab] = useState<FeedTab | null>(null);
+  const [viewMode, setViewMode] = useState<CatalogSurfaceView>("feed");
+  const listingTabsDisabled = viewMode === "catalog";
 
   // Derive effective tab: user's explicit choice if set, otherwise default based on auth.
   // Coerce "for-you" to "trending" when unauthenticated (e.g., after sign-out).
@@ -58,42 +63,55 @@ export default function Home() {
       <main className="mx-auto flex w-full max-w-[1400px] flex-col gap-8 px-6 pb-16 pt-4">
         <section className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_400px]">
           <div className="space-y-2">
-            <div className="-mx-4 flex gap-1">
-              {isAuthenticated && (
-                <button
-                  onClick={() => setActiveTab("for-you")}
-                  className={cn(
-                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                    effectiveTab === "for-you"
-                      ? "bg-zinc-900 text-white"
-                      : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+            <div className="-mx-4 flex items-center justify-between gap-3">
+              <Tabs
+                value={effectiveTab}
+                onValueChange={(value) => setActiveTab(value as FeedTab)}
+              >
+                <TabsList className="gap-0 bg-transparent p-0">
+                  {isAuthenticated && (
+                    <TabsTrigger
+                      value="for-you"
+                      disabled={listingTabsDisabled}
+                      className={cn(
+                        "h-auto flex-none rounded-md border-0 px-3 py-1.5 after:hidden",
+                        "data-[state=active]:bg-zinc-200 data-[state=active]:text-zinc-900 hover:bg-zinc-100 hover:text-zinc-900",
+                        "text-zinc-600 disabled:pointer-events-none disabled:opacity-50"
+                      )}
+                    >
+                      Recommended
+                    </TabsTrigger>
                   )}
-                >
-                  Recommended
-                </button>
-              )}
-              <button
-                onClick={() => setActiveTab("trending")}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  effectiveTab === "trending"
-                    ? "bg-zinc-900 text-white"
-                    : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-                )}
-              >
-                Trending
-              </button>
-              <button
-                onClick={() => setActiveTab("newest")}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  effectiveTab === "newest"
-                    ? "bg-zinc-900 text-white"
-                    : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-                )}
-              >
-                Newest
-              </button>
+                  <TabsTrigger
+                    value="trending"
+                    disabled={listingTabsDisabled}
+                    className={cn(
+                      "h-auto flex-none rounded-md border-0 px-3 py-1.5 after:hidden",
+                      "data-[state=active]:bg-zinc-200 data-[state=active]:text-zinc-900 hover:bg-zinc-100 hover:text-zinc-900",
+                      "text-zinc-600 disabled:pointer-events-none disabled:opacity-50"
+                    )}
+                  >
+                    Trending
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="newest"
+                    disabled={listingTabsDisabled}
+                    className={cn(
+                      "h-auto flex-none rounded-md border-0 px-3 py-1.5 after:hidden",
+                      "data-[state=active]:bg-zinc-200 data-[state=active]:text-zinc-900 hover:bg-zinc-100 hover:text-zinc-900",
+                      "text-zinc-600 disabled:pointer-events-none disabled:opacity-50"
+                    )}
+                  >
+                    Newest
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              <ProjectFeedViewToggle
+                viewMode={viewMode}
+                onChange={setViewMode}
+                className="flex-shrink-0"
+              />
             </div>
 
             <div className="-mx-4 flex items-center justify-between gap-4 rounded-xl border border-border bg-muted px-4 py-2">
@@ -115,8 +133,9 @@ export default function Home() {
                 <PlusCircle className="h-5 w-5" />
               </Link>
             </div>
-
-            {effectiveTab === "for-you" && isAuthenticated ? (
+            {viewMode === "catalog" ? (
+              <CatalogDirectory />
+            ) : effectiveTab === "for-you" && isAuthenticated ? (
               <PersonalizedFeed
                 onUpvote={handleUpvote}
                 onFollow={handleFollow}
@@ -242,73 +261,123 @@ function FeedList({
   onFollow: (id: Id<"projects">) => Promise<void>;
   isAuthenticated: boolean;
 }) {
-  const isLoading = status === "LoadingFirstPage";
-  const canLoadMore = status === "CanLoadMore";
-  const isLoadingMore = status === "LoadingMore";
-  const loadMoreRef = useRef<HTMLDivElement>(null);
+  return (
+    <ProjectFeedList
+      results={results}
+      status={status}
+      loadMore={loadMore}
+      onUpvote={onUpvote}
+      onFollow={onFollow}
+      isAuthenticated={isAuthenticated}
+      emptyState={<EmptyState />}
+    />
+  );
+}
 
-  const loadMoreCallback = useCallback(() => {
-    if (canLoadMore) {
-      loadMore(15);
-    }
-  }, [canLoadMore, loadMore]);
+type CatalogProject = {
+  _id: Id<"projects">;
+  name: string;
+  spaces: FocusArea[];
+};
 
-  useEffect(() => {
-    if (!canLoadMore || !loadMoreRef.current) return;
+function CatalogDirectory() {
+  const catalogProjects = useQuery(api.projects.listCatalog, {});
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          loadMoreCallback();
-        }
-      },
-      { rootMargin: "200px" }
+  if (catalogProjects === undefined) {
+    return (
+      <div className="py-8 text-center text-sm text-zinc-500">
+        Loading catalog...
+      </div>
     );
+  }
 
-    observer.observe(loadMoreRef.current);
-    return () => observer.disconnect();
-  }, [canLoadMore, loadMoreCallback]);
+  if (catalogProjects.length === 0) {
+    return <EmptyState />;
+  }
+
+  const groups = buildCatalogGroups(catalogProjects);
 
   return (
-    <LayoutGroup>
-      <div className="space-y-0">
-        {isLoading ? (
-          <div className="py-8 text-center text-sm text-zinc-500">
-            Loading projects...
-          </div>
-        ) : results.length ? (
-          <>
-            {results.map((project, index) => (
-              <React.Fragment key={project._id}>
-                {index > 0 && <Separator className="bg-zinc-200" />}
-                <motion.div
-                  layout
-                  layoutId={project._id}
-                  transition={{ type: "spring", stiffness: 500, damping: 35 }}
-                >
-                  <ProjectRow
-                    project={project as ProjectRowData}
-                    onUpvote={onUpvote}
-                    onFollow={onFollow}
-                    isAuthenticated={isAuthenticated}
-                  />
-                </motion.div>
-              </React.Fragment>
-            ))}
-            {/* Infinite scroll sentinel */}
-            <div ref={loadMoreRef} className="h-4" />
-            {isLoadingMore && (
-              <div className="py-4 text-center text-sm text-zinc-500">
-                Loading more projects...
-              </div>
+    <div className="mt-6 space-y-10">
+      {groups.map((group) => (
+        <section key={group.key} className="space-y-4">
+          <div className="mb-4 flex items-center gap-2">
+            {group.space && (
+              <SpaceIcon
+                icon={group.space.icon}
+                name={group.space.name}
+                size="sm"
+              />
             )}
-          </>
-        ) : (
-          <EmptyState />
-        )}
-      </div>
-    </LayoutGroup>
+            <h3 className="text-lg font-semibold text-zinc-900">
+              {group.name}
+            </h3>
+          </div>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,200px))] gap-x-0 gap-y-2">
+            {group.projects.map((project) => (
+              <Link
+                key={project._id}
+                href={`/project/${project._id}`}
+                className="block max-w-[160px] truncate py-1 text-sm text-zinc-700 transition-colors hover:text-zinc-900 hover:underline"
+                title={project.name}
+              >
+                {project.name}
+              </Link>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
   );
+}
+
+function buildCatalogGroups(projects: CatalogProject[]) {
+  const groups = new Map<
+    string,
+    { key: string; name: string; space: FocusArea | null; projects: CatalogProject[] }
+  >();
+
+  for (const project of projects) {
+    if (project.spaces.length === 0) {
+      const fallbackKey = "unassigned";
+      const existingGroup = groups.get(fallbackKey);
+      if (existingGroup) {
+        existingGroup.projects.push(project);
+      } else {
+        groups.set(fallbackKey, {
+          key: fallbackKey,
+          name: "Other",
+          space: null,
+          projects: [project],
+        });
+      }
+      continue;
+    }
+
+    for (const space of project.spaces) {
+      const key = space._id;
+      const existingGroup = groups.get(key);
+      if (existingGroup) {
+        existingGroup.projects.push(project);
+      } else {
+        groups.set(key, {
+          key,
+          name: space.name,
+          space,
+          projects: [project],
+        });
+      }
+    }
+  }
+
+  return Array.from(groups.values())
+    .map((group) => ({
+      ...group,
+      projects: group.projects.sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+      ),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 }
 
 function EmptyState() {
@@ -389,4 +458,3 @@ function TrendingThreads() {
     </div>
   );
 }
-

@@ -109,6 +109,36 @@ export const listPaginated = query({
   },
 });
 
+export const listCatalog = query({
+  args: {},
+  handler: async (ctx) => {
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .collect();
+
+    const catalogProjects = await Promise.all(
+      projects.map(async (project) => {
+        const spaces = await getAllSpacesForProject(ctx, project._id);
+        const memberships = [
+          spaces.primary,
+          ...spaces.secondary,
+        ].filter((space): space is NonNullable<typeof space> => space !== null);
+
+        return {
+          _id: project._id,
+          name: project.name,
+          spaces: memberships,
+        };
+      })
+    );
+
+    return catalogProjects.sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+    );
+  },
+});
+
 
 export const getUserProjects = query({
   args: {},
