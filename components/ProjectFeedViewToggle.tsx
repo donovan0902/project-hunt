@@ -2,6 +2,7 @@
 
 import { LibraryBig, List } from "lucide-react";
 
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 export type CatalogSurfaceView = "feed" | "catalog";
@@ -18,35 +19,37 @@ export function ProjectFeedViewToggle({
   className,
 }: ProjectFeedViewToggleProps) {
   return (
-    <div className={cn("inline-flex items-center gap-1", className)}>
-      <button
-        type="button"
-        onClick={() => onChange("feed")}
-        aria-label="Feed view"
-        title="Feed"
-        className={cn(
-          "rounded-md p-2 text-sm font-medium transition-colors",
-          viewMode === "feed"
-            ? "bg-zinc-200 text-zinc-900 hover:bg-zinc-300"
-            : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-        )}
-      >
-        <List className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange("catalog")}
-        aria-label="Catalog view"
-        title="Catalog"
-        className={cn(
-          "rounded-md p-2 text-sm font-medium transition-colors",
-          viewMode === "catalog"
-            ? "bg-zinc-200 text-zinc-900 hover:bg-zinc-300"
-            : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-        )}
-      >
-        <LibraryBig className="h-4 w-4" />
-      </button>
-    </div>
+    <Tabs
+      value={viewMode}
+      onValueChange={(value) => onChange(value as CatalogSurfaceView)}
+      className={className}
+    >
+      <TabsList className={cn("gap-0 bg-transparent p-0")}>
+        <TabsTrigger
+          value="feed"
+          aria-label="Feed view"
+          title="Feed"
+          className={cn(
+            "h-auto flex-none rounded-md border-0 p-2 transition-colors after:hidden",
+            "data-[state=active]:bg-zinc-200 data-[state=active]:text-zinc-900 hover:bg-zinc-100 hover:text-zinc-900",
+            "text-zinc-600"
+          )}
+        >
+          <List className="h-4 w-4" />
+        </TabsTrigger>
+        <TabsTrigger
+          value="catalog"
+          aria-label="Catalog view"
+          title="Catalog"
+          className={cn(
+            "h-auto flex-none rounded-md border-0 p-2 transition-colors after:hidden",
+            "data-[state=active]:bg-zinc-200 data-[state=active]:text-zinc-900 hover:bg-zinc-100 hover:text-zinc-900",
+            "text-zinc-600"
+          )}
+        >
+          <LibraryBig className="h-4 w-4" />
+        </TabsTrigger>
+      </TabsList>
+    </Tabs>
   );
 }

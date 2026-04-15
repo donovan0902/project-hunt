@@ -10,6 +10,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import React from "react";
 
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrentUser } from "@/app/useCurrentUser";
 import { ProjectFeedList } from "@/components/ProjectFeedList";
 import {
@@ -27,6 +28,7 @@ export default function Home() {
   const { isAuthenticated } = useCurrentUser();
   const [activeTab, setActiveTab] = useState<FeedTab | null>(null);
   const [viewMode, setViewMode] = useState<CatalogSurfaceView>("feed");
+  const listingTabsDisabled = viewMode === "catalog";
 
   // Derive effective tab: user's explicit choice if set, otherwise default based on auth.
   // Coerce "for-you" to "trending" when unauthenticated (e.g., after sign-out).
@@ -62,43 +64,48 @@ export default function Home() {
         <section className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_400px]">
           <div className="space-y-2">
             <div className="-mx-4 flex items-center justify-between gap-3">
-              <div className="flex flex-wrap gap-1">
-                {isAuthenticated && (
-                  <button
-                    onClick={() => setActiveTab("for-you")}
+              <Tabs
+                value={effectiveTab}
+                onValueChange={(value) => setActiveTab(value as FeedTab)}
+              >
+                <TabsList className="gap-0 bg-transparent p-0">
+                  {isAuthenticated && (
+                    <TabsTrigger
+                      value="for-you"
+                      disabled={listingTabsDisabled}
+                      className={cn(
+                        "h-auto flex-none rounded-md border-0 px-3 py-1.5 after:hidden",
+                        "data-[state=active]:bg-zinc-200 data-[state=active]:text-zinc-900 hover:bg-zinc-100 hover:text-zinc-900",
+                        "text-zinc-600 disabled:pointer-events-none disabled:opacity-50"
+                      )}
+                    >
+                      Recommended
+                    </TabsTrigger>
+                  )}
+                  <TabsTrigger
+                    value="trending"
+                    disabled={listingTabsDisabled}
                     className={cn(
-                      "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                      effectiveTab === "for-you"
-                        ? "bg-zinc-200 text-zinc-900 hover:bg-zinc-300"
-                        : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                      "h-auto flex-none rounded-md border-0 px-3 py-1.5 after:hidden",
+                      "data-[state=active]:bg-zinc-200 data-[state=active]:text-zinc-900 hover:bg-zinc-100 hover:text-zinc-900",
+                      "text-zinc-600 disabled:pointer-events-none disabled:opacity-50"
                     )}
                   >
-                    Recommended
-                  </button>
-                )}
-                <button
-                  onClick={() => setActiveTab("trending")}
-                  className={cn(
-                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                    effectiveTab === "trending"
-                      ? "bg-zinc-200 text-zinc-900 hover:bg-zinc-300"
-                      : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-                  )}
-                >
-                  Trending
-                </button>
-                <button
-                  onClick={() => setActiveTab("newest")}
-                  className={cn(
-                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                    effectiveTab === "newest"
-                      ? "bg-zinc-200 text-zinc-900 hover:bg-zinc-300"
-                      : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-                  )}
-                >
-                  Newest
-                </button>
-              </div>
+                    Trending
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="newest"
+                    disabled={listingTabsDisabled}
+                    className={cn(
+                      "h-auto flex-none rounded-md border-0 px-3 py-1.5 after:hidden",
+                      "data-[state=active]:bg-zinc-200 data-[state=active]:text-zinc-900 hover:bg-zinc-100 hover:text-zinc-900",
+                      "text-zinc-600 disabled:pointer-events-none disabled:opacity-50"
+                    )}
+                  >
+                    Newest
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
 
               <ProjectFeedViewToggle
                 viewMode={viewMode}
