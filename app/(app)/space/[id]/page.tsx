@@ -12,7 +12,7 @@ import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/app/useCurrentUser";
-import { ProjectRow } from "@/components/ProjectRow";
+import { ProjectFeedList } from "@/components/ProjectFeedList";
 import { ThreadRow } from "@/components/ThreadRow";
 import { CreateThreadForm } from "@/components/CreateThreadForm";
 import type { ProjectRowData, ThreadRowData } from "@/lib/types";
@@ -70,39 +70,10 @@ export default function SpacePage({
     { initialNumItems: 15 }
   );
 
-  // Projects loading states
-  const isLoadingProjects = projectStatus === "LoadingFirstPage";
-  const canLoadMoreProjects = projectStatus === "CanLoadMore";
-  const isLoadingMoreProjects = projectStatus === "LoadingMore";
-
   // Threads loading states
   const isLoadingThreads = threadStatus === "LoadingFirstPage";
   const canLoadMoreThreads = threadStatus === "CanLoadMore";
   const isLoadingMoreThreads = threadStatus === "LoadingMore";
-
-  // Projects infinite scroll
-  const projectLoadMoreRef = useRef<HTMLDivElement>(null);
-  const loadMoreProjectsCallback = useCallback(() => {
-    if (canLoadMoreProjects) {
-      loadMoreProjects(15);
-    }
-  }, [canLoadMoreProjects, loadMoreProjects]);
-
-  useEffect(() => {
-    if (!canLoadMoreProjects || !projectLoadMoreRef.current) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          loadMoreProjectsCallback();
-        }
-      },
-      { rootMargin: "200px" }
-    );
-
-    observer.observe(projectLoadMoreRef.current);
-    return () => observer.disconnect();
-  }, [canLoadMoreProjects, loadMoreProjectsCallback]);
 
   // Threads infinite scroll
   const threadLoadMoreRef = useRef<HTMLDivElement>(null);
@@ -245,52 +216,24 @@ export default function SpacePage({
               </button>
             </div>
             {activeTab === "projects" ? (
-              <LayoutGroup>
-                <div className="space-y-0">
-                  {isLoadingProjects ? (
-                    <div className="py-8 text-center text-sm text-zinc-500">
-                      Loading projects...
-                    </div>
-                  ) : projectResults.length ? (
-                    <>
-                      {projectResults.map((project, index) => (
-                        <React.Fragment key={project._id}>
-                          {index > 0 && <Separator className="bg-zinc-200" />}
-                          <motion.div
-                            layout
-                            layoutId={project._id}
-                            transition={{
-                              type: "spring",
-                              stiffness: 500,
-                              damping: 35,
-                            }}
-                          >
-                            <ProjectRow
-                              project={project as ProjectRowData}
-                              onUpvote={handleUpvote}
-                              onFollow={handleProjectFollow}
-                              isAuthenticated={isAuthenticated}
-                              hideSpaceLabel
-                            />
-                          </motion.div>
-                        </React.Fragment>
-                      ))}
-                      <div ref={projectLoadMoreRef} className="h-4" />
-                      {isLoadingMoreProjects && (
-                        <div className="py-4 text-center text-sm text-zinc-500">
-                          Loading more projects...
-                        </div>
-                      )}
-                    </>
-                  ) : (
+              <div className="space-y-4">
+                <ProjectFeedList
+                  results={projectResults as ProjectRowData[]}
+                  status={projectStatus}
+                  loadMore={loadMoreProjects}
+                  onUpvote={handleUpvote}
+                  onFollow={handleProjectFollow}
+                  isAuthenticated={isAuthenticated}
+                  hideSpaceLabel
+                  emptyState={
                     <div className="rounded-3xl bg-zinc-100/60 p-6 text-center text-sm text-zinc-500 space-y-3">
                       <p className="font-medium text-zinc-900">
                         No projects in this space yet.
                       </p>
                     </div>
-                  )}
-                </div>
-              </LayoutGroup>
+                  }
+                />
+              </div>
             ) : (
               <div className="space-y-4">
                 {isAuthenticated && (
@@ -481,4 +424,3 @@ export default function SpacePage({
     </div>
   );
 }
-

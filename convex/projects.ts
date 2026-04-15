@@ -36,6 +36,7 @@ export {
 export {
   list,
   listPaginated,
+  listCatalog,
   listNewestPaginated,
   getUserProjects,
   getByUserId,
