@@ -159,22 +159,9 @@ export const generateDigestBatch = internalAction({
   },
   handler: async (ctx, args) => {
     for (const userId of args.userIds) {
-      const digestData: DigestData = await ctx.runQuery(
-        internal.digests.gatherUserDigestData,
-        {
-          userId,
-          periodStart: args.periodStart,
-          periodEnd: args.periodEnd,
-        }
-      );
-
-      if (isDigestEmpty(digestData)) continue;
-
-      await ctx.runMutation(internal.digests.enqueueDigestEmail, {
+      await ctx.runMutation(internal.digests.enqueueCatalogInvite, {
         userId,
-        periodStart: args.periodStart,
         periodEnd: args.periodEnd,
-        digestData,
       });
     }
   },
@@ -412,6 +399,35 @@ export const gatherUserDigestData = internalQuery({
 // ─── Internal: enqueue digest email ───────────────────────────────────────────
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
+
+export const enqueueCatalogInvite = internalMutation({
+  args: {
+    userId: v.id("users"),
+    periodEnd: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const deduplicationWindow = args.periodEnd - ONE_HOUR_MS;
+    const existing = await ctx.db
+      .query("emailQueue")
+      .withIndex("by_userId_type_createdAt", (q) =>
+        q
+          .eq("userId", args.userId)
+          .eq("type", "catalog_invite")
+          .gte("createdAt", deduplicationWindow)
+      )
+      .first();
+
+    if (existing) return;
+
+    await ctx.db.insert("emailQueue", {
+      userId: args.userId,
+      type: "catalog_invite",
+      status: "pending",
+      payload: {},
+      createdAt: Date.now(),
+    });
+  },
+});
 
 export const enqueueDigestEmail = internalMutation({
   args: {

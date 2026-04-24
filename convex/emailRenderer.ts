@@ -953,6 +953,108 @@ export function renderFollowedProjectUpdateEmail(args: {
   return { subject, html, text };
 }
 
+// ─── Catalog Invite Email ────────────────────────────────────────────────────
+
+export function renderCatalogInviteEmail(args: {
+  recipientName: string;
+  baseUrl: string;
+  profileUrl: string;
+}): RenderedEmail {
+  const { recipientName, baseUrl, profileUrl } = args;
+  const subject = "Help grow Honda's digital resource library";
+  const preheader = "See what your colleagues have built — and share what you've made.";
+  const submitUrl = joinUrl(baseUrl, "/submit");
+  const homeUrl = joinUrl(baseUrl, "/");
+
+  const html = `
+    <!doctype html>
+    <html lang="en">
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>${escapeHtml(subject)}</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f4f4f5; color: #18181b; font-family: Arial, sans-serif;">
+        <div style="display: none; max-height: 0; overflow: hidden; opacity: 0;">
+          ${escapeHtml(preheader)}
+        </div>
+        <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse: collapse; background-color: #f4f4f5;">
+          <tr>
+            <td align="center" style="padding: 24px 12px;">
+              <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width: 640px; border-collapse: collapse; background-color: #ffffff; border-radius: 18px;">
+                <tr>
+                  <td style="padding: 28px 28px 24px; border-bottom: 1px solid #e4e4e7;">
+                    <div style="font-size: 28px; font-weight: 700; color: #166534; margin: 0 0 16px;">Garden</div>
+                    <div style="font-size: 24px; font-weight: 700; line-height: 1.3; color: #18181b; margin: 0 0 10px;">Hi ${escapeHtml(recipientName)},</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 24px 28px 8px;">
+                    <div style="font-size: 15px; line-height: 1.7; color: #3f3f46; margin: 0 0 16px;">
+                      A lot of people at Honda are quietly building useful things. Garden is where that work becomes visible.
+                    </div>
+                    <div style="font-size: 15px; line-height: 1.7; color: #3f3f46; margin: 0 0 16px;">
+                      If you've built something that saves you time — a script, a dashboard, an automation, a template — Garden is a good home for it. Somebody else may be solving the same problem right now, and what you've already made could be the answer. And while you're there, take a look at what your colleagues have put together. You might find something that changes how you work.
+                    </div>
+                    <div style="font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #71717a; margin: 0 0 10px;">
+                      What's worth sharing
+                    </div>
+                    <ul style="padding-left: 20px; margin: 0 0 20px; font-size: 15px; line-height: 1.8; color: #3f3f46;">
+                      <li>Scripts and automations that cut down on repetitive work</li>
+                      <li>Dashboards and reports you've put together</li>
+                      <li>Templates, tools, or workflows others might find useful</li>
+                    </ul>
+                    <div style="font-size: 15px; line-height: 1.7; color: #3f3f46; margin: 0 0 24px;">
+                      It only takes a couple minutes to submit.
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 0 28px 28px;">
+                    <a href="${escapeHtml(submitUrl)}" style="display: inline-block; background-color: #166534; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 700; padding: 12px 18px; border-radius: 999px; margin-right: 10px;">Add a resource</a>
+                    <a href="${escapeHtml(homeUrl)}" style="display: inline-block; background-color: #ffffff; color: #166534; text-decoration: none; font-size: 14px; font-weight: 700; padding: 12px 18px; border-radius: 999px; border: 1.5px solid #166534;">Browse the library</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 0 28px 28px; font-size: 12px; line-height: 1.6; color: #71717a;">
+                    You're receiving this from Garden.
+                    <a href="${escapeHtml(profileUrl)}" style="color: #71717a;">Manage your email preferences</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `.trim();
+
+  const text = [
+    `Garden — Help grow Honda's digital resource library`,
+    "",
+    `Hi ${recipientName},`,
+    "",
+    "A lot of people at Honda are quietly building useful things. Garden is where that work becomes visible.",
+    "",
+    "If you've built something that saves you time — a script, a dashboard, an automation, a template — Garden is a good home for it. Somebody else may be solving the same problem right now, and what you've already made could be the answer. And while you're there, take a look at what your colleagues have put together. You might find something that changes how you work.",
+    "",
+    "What's worth sharing:",
+    "- Scripts and automations that cut down on repetitive work",
+    "- Dashboards and reports you've put together",
+    "- Templates, tools, or workflows others might find useful",
+    "",
+    "It only takes a couple minutes to submit.",
+    "",
+    `Add a resource: ${submitUrl}`,
+    `Browse the library: ${homeUrl}`,
+    "",
+    `You're receiving this from Garden.`,
+    `Manage your email preferences: ${profileUrl}`,
+  ].join("\n");
+
+  return { subject, html, text };
+}
+
 // ─── Mention Activity Email ──────────────────────────────────────────────────
 
 export function renderMentionEmail(args: {
