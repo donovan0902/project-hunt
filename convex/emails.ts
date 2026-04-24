@@ -154,6 +154,7 @@ export const sendEmail = internalAction({
     } else if (args.type === "catalog_invite") {
       const rendered = renderCatalogInviteEmail({
         recipientName: recipient.name,
+        recentResourceCount: (args.payload as { recentResourceCount: number }).recentResourceCount ?? 0,
         baseUrl,
         profileUrl,
       });
