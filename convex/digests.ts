@@ -158,10 +158,15 @@ export const generateDigestBatch = internalAction({
     periodEnd: v.number(),
   },
   handler: async (ctx, args) => {
+    const recentResourceCount: number = await ctx.runQuery(
+      internal.digests.getRecentResourceCount,
+      { periodStart: args.periodStart }
+    );
     for (const userId of args.userIds) {
       await ctx.runMutation(internal.digests.enqueueCatalogInvite, {
         userId,
         periodEnd: args.periodEnd,
+        recentResourceCount,
       });
     }
   },
@@ -400,10 +405,23 @@ export const gatherUserDigestData = internalQuery({
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
+export const getRecentResourceCount = internalQuery({
+  args: { periodStart: v.number() },
+  handler: async (ctx, args) => {
+    const recent = await ctx.db
+      .query("projects")
+      .withIndex("by_status_hotScore", (q) => q.eq("status", "active"))
+      .order("desc")
+      .collect();
+    return recent.filter((p) => p._creationTime >= args.periodStart).length;
+  },
+});
+
 export const enqueueCatalogInvite = internalMutation({
   args: {
     userId: v.id("users"),
     periodEnd: v.number(),
+    recentResourceCount: v.number(),
   },
   handler: async (ctx, args) => {
     const deduplicationWindow = args.periodEnd - ONE_HOUR_MS;
@@ -423,7 +441,7 @@ export const enqueueCatalogInvite = internalMutation({
       userId: args.userId,
       type: "catalog_invite",
       status: "pending",
-      payload: {},
+      payload: { recentResourceCount: args.recentResourceCount },
       createdAt: Date.now(),
     });
   },

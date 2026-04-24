@@ -957,12 +957,13 @@ export function renderFollowedProjectUpdateEmail(args: {
 
 export function renderCatalogInviteEmail(args: {
   recipientName: string;
+  recentResourceCount: number;
   baseUrl: string;
   profileUrl: string;
 }): RenderedEmail {
-  const { recipientName, baseUrl, profileUrl } = args;
-  const subject = "Help grow Honda's digital resource library";
-  const preheader = "See what your colleagues have built — and share what you've made.";
+  const { recipientName, recentResourceCount, baseUrl, profileUrl } = args;
+  const subject = "What your Honda colleagues have been building";
+  const preheader = `${recentResourceCount} ${recentResourceCount === 1 ? "resource was" : "resources were"} added to Garden this week.`;
   const submitUrl = joinUrl(baseUrl, "/submit");
   const homeUrl = joinUrl(baseUrl, "/");
 
@@ -984,7 +985,8 @@ export function renderCatalogInviteEmail(args: {
               <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width: 640px; border-collapse: collapse; background-color: #ffffff; border-radius: 18px;">
                 <tr>
                   <td style="padding: 28px 28px 24px; border-bottom: 1px solid #e4e4e7;">
-                    <div style="font-size: 28px; font-weight: 700; color: #166534; margin: 0 0 16px;">Garden</div>
+                    <div style="font-size: 28px; font-weight: 700; color: #166534; margin: 0 0 8px;">Garden</div>
+                    <div style="font-size: 14px; color: #71717a; margin: 0 0 12px;">${escapeHtml(preheader)}</div>
                     <div style="font-size: 24px; font-weight: 700; line-height: 1.3; color: #18181b; margin: 0 0 10px;">Hi ${escapeHtml(recipientName)},</div>
                   </td>
                 </tr>
@@ -1010,9 +1012,13 @@ export function renderCatalogInviteEmail(args: {
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding: 0 28px 28px;">
-                    <a href="${escapeHtml(submitUrl)}" style="display: inline-block; background-color: #166534; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 700; padding: 12px 18px; border-radius: 999px; margin-right: 10px;">Add a resource</a>
-                    <a href="${escapeHtml(homeUrl)}" style="display: inline-block; background-color: #ffffff; color: #166534; text-decoration: none; font-size: 14px; font-weight: 700; padding: 12px 18px; border-radius: 999px; border: 1.5px solid #166534;">Browse the library</a>
+                  <td style="padding: 0 28px 16px;">
+                    <a href="${escapeHtml(submitUrl)}" style="display: inline-block; background-color: #166534; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 700; padding: 12px 18px; border-radius: 999px;">Add a resource</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 0 28px 28px; font-size: 14px; color: #71717a;">
+                    or <a href="${escapeHtml(homeUrl)}" style="color: #166534; text-decoration: none;">browse the library</a>
                   </td>
                 </tr>
                 <tr>
@@ -1030,9 +1036,11 @@ export function renderCatalogInviteEmail(args: {
   `.trim();
 
   const text = [
-    `Garden — Help grow Honda's digital resource library`,
+    `Garden — What your Honda colleagues have been building`,
     "",
     `Hi ${recipientName},`,
+    "",
+    preheader,
     "",
     "A lot of people at Honda are quietly building useful things. Garden is where that work becomes visible.",
     "",
