@@ -160,7 +160,7 @@ export const generateDigestBatch = internalAction({
   handler: async (ctx, args) => {
     const recentResourceCount: number = await ctx.runQuery(
       internal.digests.getRecentResourceCount,
-      { periodStart: args.periodStart }
+      {}
     );
     for (const userId of args.userIds) {
       await ctx.runMutation(internal.digests.enqueueCatalogInvite, {
@@ -406,14 +406,13 @@ export const gatherUserDigestData = internalQuery({
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
 export const getRecentResourceCount = internalQuery({
-  args: { periodStart: v.number() },
-  handler: async (ctx, args) => {
-    const recent = await ctx.db
+  args: {},
+  handler: async (ctx) => {
+    const projects = await ctx.db
       .query("projects")
       .withIndex("by_status_hotScore", (q) => q.eq("status", "active"))
-      .order("desc")
       .collect();
-    return recent.filter((p) => p._creationTime >= args.periodStart).length;
+    return projects.length;
   },
 });
 

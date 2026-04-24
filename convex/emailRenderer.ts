@@ -963,7 +963,7 @@ export function renderCatalogInviteEmail(args: {
 }): RenderedEmail {
   const { recipientName, recentResourceCount, baseUrl, profileUrl } = args;
   const subject = "What your Honda colleagues have been building";
-  const preheader = `${recentResourceCount} ${recentResourceCount === 1 ? "resource was" : "resources were"} added to Garden this week.`;
+  const preheader = `Garden has ${recentResourceCount} ${recentResourceCount === 1 ? "resource" : "resources"} in the library.`;
   const submitUrl = joinUrl(baseUrl, "/submit");
   const homeUrl = joinUrl(baseUrl, "/");
 
