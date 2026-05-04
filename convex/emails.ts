@@ -17,7 +17,6 @@ import {
   renderFollowedCommentEmail,
   renderFollowedProjectUpdateEmail,
   renderMentionEmail,
-  renderCatalogInviteEmail,
   type WeeklyDigestPayload,
   type SpaceActivityPayload,
   type CommentActivityPayload,
@@ -145,16 +144,6 @@ export const sendEmail = internalAction({
       const rendered = renderMentionEmail({
         recipientName: recipient.name,
         payload: args.payload as MentionActivityPayload,
-        baseUrl,
-        profileUrl,
-      });
-      subject = rendered.subject;
-      html = rendered.html;
-      text = rendered.text;
-    } else if (args.type === "catalog_invite") {
-      const rendered = renderCatalogInviteEmail({
-        recipientName: recipient.name,
-        recentResourceCount: (args.payload as { recentResourceCount: number }).recentResourceCount ?? 0,
         baseUrl,
         profileUrl,
       });

@@ -3,13 +3,11 @@ import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { isEmailEnabled } from "./emails";
-import { getAllSpacesForProject } from "./projects/spaces";
 
 const BATCH_SIZE = 50;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_TOP_PROJECTS_PER_SPACE = 3;
 const MAX_NEW_THREADS_PER_SPACE = 5;
-const MAX_PLATFORM_HIGHLIGHTS = 3;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,26 +37,6 @@ interface SpaceActivity {
   }[];
 }
 
-interface PlatformHighlights {
-  topProjects: {
-    projectId: Id<"projects">;
-    projectName: string;
-    upvotes: number;
-    creatorName: string;
-    spaceName: string | null;
-    spaceIcon: string | null;
-  }[];
-  topThreads: {
-    threadId: Id<"threads">;
-    threadTitle: string;
-    upvoteCount: number;
-    commentCount: number;
-    creatorName: string;
-    spaceName: string | null;
-    spaceIcon: string | null;
-  }[];
-}
-
 interface DigestData {
   ownProjectActivity: OwnProjectActivity[];
   ownProjectTotals: {
@@ -68,22 +46,18 @@ interface DigestData {
     totalNewViews: number;
   };
   followedSpaceActivity: SpaceActivity[];
-  platformHighlights: PlatformHighlights;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function isDigestEmpty(data: DigestData): boolean {
-  const { ownProjectTotals, followedSpaceActivity, platformHighlights } = data;
+  const { ownProjectTotals, followedSpaceActivity } = data;
   const hasOwnActivity =
     ownProjectTotals.totalNewUpvotes > 0 ||
     ownProjectTotals.totalNewComments > 0 ||
     ownProjectTotals.totalNewFollows > 0 ||
     ownProjectTotals.totalNewViews > 0;
-  const hasPlatformHighlights =
-    platformHighlights.topProjects.length > 0 ||
-    platformHighlights.topThreads.length > 0;
-  return !hasOwnActivity && followedSpaceActivity.length === 0 && !hasPlatformHighlights;
+  return !hasOwnActivity && followedSpaceActivity.length === 0;
 }
 
 // ─── Internal: orchestrator action (cron entry point) ─────────────────────────
@@ -158,15 +132,18 @@ export const generateDigestBatch = internalAction({
     periodEnd: v.number(),
   },
   handler: async (ctx, args) => {
-    const recentResourceCount: number = await ctx.runQuery(
-      internal.digests.getRecentResourceCount,
-      {}
-    );
     for (const userId of args.userIds) {
-      await ctx.runMutation(internal.digests.enqueueCatalogInvite, {
+      const digestData = await ctx.runQuery(internal.digests.gatherUserDigestData, {
         userId,
+        periodStart: args.periodStart,
         periodEnd: args.periodEnd,
-        recentResourceCount,
+      });
+      if (isDigestEmpty(digestData)) continue;
+      await ctx.runMutation(internal.digests.enqueueDigestEmail, {
+        userId,
+        periodStart: args.periodStart,
+        periodEnd: args.periodEnd,
+        digestData,
       });
     }
   },
@@ -336,57 +313,6 @@ export const gatherUserDigestData = internalQuery({
       }
     }
 
-    // ── Section 3: Platform highlights ──
-
-    const trendingProjectDocs = await ctx.db
-      .query("projects")
-      .withIndex("by_status_hotScore", (q) => q.eq("status", "active"))
-      .order("desc")
-      .take(MAX_PLATFORM_HIGHLIGHTS);
-
-    const topProjects: PlatformHighlights["topProjects"] = [];
-    for (const project of trendingProjectDocs) {
-      const [creator, spaces, upvoteRecords] = await Promise.all([
-        ctx.db.get(project.userId),
-        getAllSpacesForProject(ctx, project._id),
-        ctx.db
-          .query("upvotes")
-          .withIndex("by_project", (q) => q.eq("projectId", project._id))
-          .collect(),
-      ]);
-      topProjects.push({
-        projectId: project._id,
-        projectName: project.name,
-        upvotes: upvoteRecords.length,
-        creatorName: creator?.name ?? "Unknown",
-        spaceName: spaces.primary?.name ?? null,
-        spaceIcon: spaces.primary?.icon ?? null,
-      });
-    }
-
-    const trendingThreadDocs = await ctx.db
-      .query("threads")
-      .withIndex("by_hotScore")
-      .order("desc")
-      .take(MAX_PLATFORM_HIGHLIGHTS);
-
-    const topThreads: PlatformHighlights["topThreads"] = [];
-    for (const thread of trendingThreadDocs) {
-      const [creator, focusArea] = await Promise.all([
-        ctx.db.get(thread.userId),
-        ctx.db.get(thread.focusAreaId),
-      ]);
-      topThreads.push({
-        threadId: thread._id,
-        threadTitle: thread.title,
-        upvoteCount: thread.upvoteCount,
-        commentCount: thread.commentCount,
-        creatorName: creator?.name ?? "Unknown",
-        spaceName: focusArea?.name ?? null,
-        spaceIcon: focusArea?.icon ?? null,
-      });
-    }
-
     return {
       ownProjectActivity,
       ownProjectTotals: {
@@ -396,7 +322,6 @@ export const gatherUserDigestData = internalQuery({
         totalNewViews,
       },
       followedSpaceActivity,
-      platformHighlights: { topProjects, topThreads },
     } satisfies DigestData;
   },
 });
@@ -404,47 +329,6 @@ export const gatherUserDigestData = internalQuery({
 // ─── Internal: enqueue digest email ───────────────────────────────────────────
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
-
-export const getRecentResourceCount = internalQuery({
-  args: {},
-  handler: async (ctx) => {
-    const projects = await ctx.db
-      .query("projects")
-      .withIndex("by_status_hotScore", (q) => q.eq("status", "active"))
-      .collect();
-    return projects.length;
-  },
-});
-
-export const enqueueCatalogInvite = internalMutation({
-  args: {
-    userId: v.id("users"),
-    periodEnd: v.number(),
-    recentResourceCount: v.number(),
-  },
-  handler: async (ctx, args) => {
-    const deduplicationWindow = args.periodEnd - ONE_HOUR_MS;
-    const existing = await ctx.db
-      .query("emailQueue")
-      .withIndex("by_userId_type_createdAt", (q) =>
-        q
-          .eq("userId", args.userId)
-          .eq("type", "catalog_invite")
-          .gte("createdAt", deduplicationWindow)
-      )
-      .first();
-
-    if (existing) return;
-
-    await ctx.db.insert("emailQueue", {
-      userId: args.userId,
-      type: "catalog_invite",
-      status: "pending",
-      payload: { recentResourceCount: args.recentResourceCount },
-      createdAt: Date.now(),
-    });
-  },
-});
 
 export const enqueueDigestEmail = internalMutation({
   args: {
