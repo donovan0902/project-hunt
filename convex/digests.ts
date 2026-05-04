@@ -228,18 +228,14 @@ export const gatherUserDigestData = internalQuery({
       totalNewViews += newViews;
     }
 
-    // ── Section 2: Activity in followed spaces ──
+    // ── Section 2: New activity across all spaces this week ──
 
-    const followedSpaces = await ctx.db
-      .query("userFocusAreas")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
+    const allSpaces = await ctx.db.query("focusAreas").collect();
+    const activeSpaces = allSpaces.filter((s) => s.isActive);
 
     const followedSpaceActivity: SpaceActivity[] = [];
 
-    for (const follow of followedSpaces) {
-      const focusArea = await ctx.db.get(follow.focusAreaId);
-      if (!focusArea || !focusArea.isActive) continue;
+    for (const focusArea of activeSpaces) {
 
       // All projects in this space (primary + secondary), sorted by hotScore
       const spaceRows = await ctx.db

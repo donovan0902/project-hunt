@@ -276,7 +276,7 @@ function renderTextVersion(
 
   if (payload.followedSpaceActivity.length > 0) {
     sections.push("");
-    sections.push("From spaces you follow");
+    sections.push("New this week on Garden");
 
     for (const space of payload.followedSpaceActivity) {
       sections.push(`- ${space.focusAreaIcon ? `${space.focusAreaIcon} ` : ""}${space.focusAreaName}`);
@@ -317,7 +317,7 @@ export function renderWeeklyDigestEmail(args: {
   const dateRange = formatDateRange(payload.periodStart, payload.periodEnd);
   const subject = getSubject(payload);
   const preheader =
-    "Activity on your projects and from spaces you follow.";
+    "Activity on your projects and new content from across Garden.";
   const homeUrl = joinUrl(baseUrl, "/");
   const introSummary = renderOwnProjectSummary(payload);
 
@@ -376,7 +376,7 @@ export function renderWeeklyDigestEmail(args: {
                     ? `
                       <tr>
                         <td style="padding: 16px 28px 8px;">
-                          <div style="font-size: 20px; font-weight: 700; color: #18181b; margin: 0 0 16px;">From spaces you follow</div>
+                          <div style="font-size: 20px; font-weight: 700; color: #18181b; margin: 0 0 16px;">New this week on Garden</div>
                           <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse: collapse;">
                             ${renderFollowedSpaces(payload, baseUrl)}
                           </table>
