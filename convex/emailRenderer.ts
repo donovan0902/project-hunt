@@ -26,26 +26,6 @@ type SpaceActivity = {
   }[];
 };
 
-type PlatformHighlights = {
-  topProjects: {
-    projectId: Id<"projects">;
-    projectName: string;
-    upvotes: number;
-    creatorName: string;
-    spaceName: string | null;
-    spaceIcon: string | null;
-  }[];
-  topThreads: {
-    threadId: Id<"threads">;
-    threadTitle: string;
-    upvoteCount: number;
-    commentCount: number;
-    creatorName: string;
-    spaceName: string | null;
-    spaceIcon: string | null;
-  }[];
-};
-
 export type SpaceActivityPayload = {
   focusAreaName: string;
   focusAreaIcon?: string;
@@ -73,7 +53,6 @@ export type WeeklyDigestPayload = {
     totalNewViews: number;
   };
   followedSpaceActivity: SpaceActivity[];
-  platformHighlights: PlatformHighlights;
   periodStart: number;
   periodEnd: number;
 };
@@ -150,7 +129,7 @@ function getSubject(payload: WeeklyDigestPayload): string {
     return `Your Garden weekly digest: ${formatCount(payload.followedSpaceActivity.length, "space")} with new activity`;
   }
 
-  return "Your Garden weekly digest: trending this week";
+  return "Your Garden weekly digest";
 }
 
 function joinUrl(baseUrl: string, path: string): string {
@@ -269,65 +248,6 @@ function renderFollowedSpaces(payload: WeeklyDigestPayload, baseUrl: string): st
     .join("");
 }
 
-function renderPlatformHighlights(payload: WeeklyDigestPayload, baseUrl: string): string {
-  const projectItems = payload.platformHighlights.topProjects
-    .map((project) => {
-      const projectUrl = joinUrl(baseUrl, `/project/${project.projectId}`);
-      const location = project.spaceName
-        ? ` - ${project.spaceIcon ? `${project.spaceIcon} ` : ""}${project.spaceName}`
-        : "";
-      return `
-        <li style="margin: 0 0 8px;">
-          <a href="${escapeHtml(projectUrl)}" style="color: #166534; text-decoration: none; font-weight: 600;">${escapeHtml(project.projectName)}</a>
-          <span style="color: #71717a;"> by ${escapeHtml(project.creatorName)} (${formatCount(project.upvotes, "upvote")})${escapeHtml(location)}</span>
-        </li>
-      `;
-    })
-    .join("");
-
-  const threadItems = payload.platformHighlights.topThreads
-    .map((thread) => {
-      const threadUrl = joinUrl(baseUrl, `/thread/${thread.threadId}`);
-      const location = thread.spaceName
-        ? ` - ${thread.spaceIcon ? `${thread.spaceIcon} ` : ""}${thread.spaceName}`
-        : "";
-      return `
-        <li style="margin: 0 0 8px;">
-          <a href="${escapeHtml(threadUrl)}" style="color: #166534; text-decoration: none; font-weight: 600;">${escapeHtml(thread.threadTitle)}</a>
-          <span style="color: #71717a;"> by ${escapeHtml(thread.creatorName)} (${formatCount(thread.upvoteCount, "upvote")}, ${formatCount(thread.commentCount, "comment")})${escapeHtml(location)}</span>
-        </li>
-      `;
-    })
-    .join("");
-
-  return `
-    ${
-      projectItems
-        ? `
-          <div style="font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #71717a; margin: 0 0 8px;">
-            Top projects
-          </div>
-          <ul style="padding-left: 18px; margin: 0 0 14px;">
-            ${projectItems}
-          </ul>
-        `
-        : ""
-    }
-    ${
-      threadItems
-        ? `
-          <div style="font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #71717a; margin: 0 0 8px;">
-            Top threads
-          </div>
-          <ul style="padding-left: 18px; margin: 0;">
-            ${threadItems}
-          </ul>
-        `
-        : ""
-    }
-  `;
-}
-
 function renderTextVersion(
   recipientName: string,
   payload: WeeklyDigestPayload,
@@ -356,7 +276,7 @@ function renderTextVersion(
 
   if (payload.followedSpaceActivity.length > 0) {
     sections.push("");
-    sections.push("From spaces you follow");
+    sections.push("New this week on Garden");
 
     for (const space of payload.followedSpaceActivity) {
       sections.push(`- ${space.focusAreaIcon ? `${space.focusAreaIcon} ` : ""}${space.focusAreaName}`);
@@ -379,41 +299,6 @@ function renderTextVersion(
     }
   }
 
-  const hasHighlights =
-    payload.platformHighlights.topProjects.length > 0 ||
-    payload.platformHighlights.topThreads.length > 0;
-
-  if (hasHighlights) {
-    sections.push("");
-    sections.push("Trending across Garden");
-
-    if (payload.platformHighlights.topProjects.length > 0) {
-      sections.push("Top projects:");
-      for (const project of payload.platformHighlights.topProjects) {
-        const location = project.spaceName
-          ? ` - ${project.spaceIcon ? `${project.spaceIcon} ` : ""}${project.spaceName}`
-          : "";
-        sections.push(
-          `- ${project.projectName} by ${project.creatorName} (${formatCount(project.upvotes, "upvote")})${location}`
-        );
-        sections.push(`  ${joinUrl(baseUrl, `/project/${project.projectId}`)}`);
-      }
-    }
-
-    if (payload.platformHighlights.topThreads.length > 0) {
-      sections.push("Top threads:");
-      for (const thread of payload.platformHighlights.topThreads) {
-        const location = thread.spaceName
-          ? ` - ${thread.spaceIcon ? `${thread.spaceIcon} ` : ""}${thread.spaceName}`
-          : "";
-        sections.push(
-          `- ${thread.threadTitle} by ${thread.creatorName} (${formatCount(thread.upvoteCount, "upvote")}, ${formatCount(thread.commentCount, "comment")})${location}`
-        );
-        sections.push(`  ${joinUrl(baseUrl, `/thread/${thread.threadId}`)}`);
-      }
-    }
-  }
-
   sections.push("");
   sections.push(`Open Garden: ${joinUrl(baseUrl, "/")}`);
   sections.push("You're receiving this weekly digest from Garden. This is an automated email.");
@@ -432,7 +317,7 @@ export function renderWeeklyDigestEmail(args: {
   const dateRange = formatDateRange(payload.periodStart, payload.periodEnd);
   const subject = getSubject(payload);
   const preheader =
-    "Project activity, spaces you follow, and what is trending across Garden.";
+    "Activity on your projects and new content from across Garden.";
   const homeUrl = joinUrl(baseUrl, "/");
   const introSummary = renderOwnProjectSummary(payload);
 
@@ -491,25 +376,10 @@ export function renderWeeklyDigestEmail(args: {
                     ? `
                       <tr>
                         <td style="padding: 16px 28px 8px;">
-                          <div style="font-size: 20px; font-weight: 700; color: #18181b; margin: 0 0 16px;">From spaces you follow</div>
+                          <div style="font-size: 20px; font-weight: 700; color: #18181b; margin: 0 0 16px;">New this week on Garden</div>
                           <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse: collapse;">
                             ${renderFollowedSpaces(payload, baseUrl)}
                           </table>
-                        </td>
-                      </tr>
-                    `
-                    : ""
-                }
-                ${
-                  payload.platformHighlights.topProjects.length > 0 ||
-                  payload.platformHighlights.topThreads.length > 0
-                    ? `
-                      <tr>
-                        <td style="padding: 16px 28px 28px;">
-                          <div style="font-size: 20px; font-weight: 700; color: #18181b; margin: 0 0 16px;">Trending across Garden</div>
-                          <div style="font-size: 14px; line-height: 1.6; color: #52525b; border: 1px solid #d4d4d8; border-radius: 12px; padding: 16px 18px;">
-                            ${renderPlatformHighlights(payload, baseUrl)}
-                          </div>
                         </td>
                       </tr>
                     `
@@ -947,116 +817,6 @@ export function renderFollowedProjectUpdateEmail(args: {
     `See what changed: ${projectUrl}`,
     "",
     "You're receiving this because you follow this project. This is an automated email.",
-    `Manage your email preferences: ${profileUrl}`,
-  ].join("\n");
-
-  return { subject, html, text };
-}
-
-// ─── Catalog Invite Email ────────────────────────────────────────────────────
-
-export function renderCatalogInviteEmail(args: {
-  recipientName: string;
-  recentResourceCount: number;
-  baseUrl: string;
-  profileUrl: string;
-}): RenderedEmail {
-  const { recipientName, recentResourceCount, baseUrl, profileUrl } = args;
-  const subject = "What your Honda colleagues have been building";
-  const preheader = `Garden has ${recentResourceCount} ${recentResourceCount === 1 ? "resource" : "resources"} in the library.`;
-  const submitUrl = joinUrl(baseUrl, "/submit");
-  const homeUrl = joinUrl(baseUrl, "/");
-
-  const html = `
-    <!doctype html>
-    <html lang="en">
-      <head>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>${escapeHtml(subject)}</title>
-      </head>
-      <body style="margin: 0; padding: 0; background-color: #f4f4f5; color: #18181b; font-family: Arial, sans-serif;">
-        <div style="display: none; max-height: 0; overflow: hidden; opacity: 0;">
-          ${escapeHtml(preheader)}
-        </div>
-        <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse: collapse; background-color: #f4f4f5;">
-          <tr>
-            <td align="center" style="padding: 24px 12px;">
-              <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width: 640px; border-collapse: collapse; background-color: #ffffff; border-radius: 18px;">
-                <tr>
-                  <td style="padding: 28px 28px 24px; border-bottom: 1px solid #e4e4e7;">
-                    <div style="font-size: 28px; font-weight: 700; color: #166534; margin: 0 0 8px;">Garden</div>
-                    <div style="font-size: 14px; color: #71717a; margin: 0 0 12px;">${escapeHtml(preheader)}</div>
-                    <div style="font-size: 24px; font-weight: 700; line-height: 1.3; color: #18181b; margin: 0 0 10px;">Hi ${escapeHtml(recipientName)},</div>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding: 24px 28px 8px;">
-                    <div style="font-size: 15px; line-height: 1.7; color: #3f3f46; margin: 0 0 16px;">
-                      A lot of people at Honda are quietly building useful things. Garden is where that work becomes visible.
-                    </div>
-                    <div style="font-size: 15px; line-height: 1.7; color: #3f3f46; margin: 0 0 16px;">
-                      If you've built something that saves you time — a script, a dashboard, an automation, a template — Garden is a good home for it. Somebody else may be solving the same problem right now, and what you've already made could be the answer. And while you're there, take a look at what your colleagues have put together. You might find something that changes how you work.
-                    </div>
-                    <div style="font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #71717a; margin: 0 0 10px;">
-                      What's worth sharing
-                    </div>
-                    <ul style="padding-left: 20px; margin: 0 0 20px; font-size: 15px; line-height: 1.8; color: #3f3f46;">
-                      <li>Scripts and automations that cut down on repetitive work</li>
-                      <li>Dashboards and reports you've put together</li>
-                      <li>Templates, tools, or workflows others might find useful</li>
-                    </ul>
-                    <div style="font-size: 15px; line-height: 1.7; color: #3f3f46; margin: 0 0 24px;">
-                      It only takes a couple minutes to submit.
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding: 0 28px 16px;">
-                    <a href="${escapeHtml(submitUrl)}" style="display: inline-block; background-color: #166534; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 700; padding: 12px 18px; border-radius: 999px;">Add a resource</a>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding: 0 28px 28px; font-size: 14px; color: #71717a;">
-                    or <a href="${escapeHtml(homeUrl)}" style="color: #166534; text-decoration: none;">browse the library</a>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding: 0 28px 28px; font-size: 12px; line-height: 1.6; color: #71717a;">
-                    You're receiving this from Garden.
-                    <a href="${escapeHtml(profileUrl)}" style="color: #71717a;">Manage your email preferences</a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-      </body>
-    </html>
-  `.trim();
-
-  const text = [
-    `Garden — What your Honda colleagues have been building`,
-    "",
-    `Hi ${recipientName},`,
-    "",
-    preheader,
-    "",
-    "A lot of people at Honda are quietly building useful things. Garden is where that work becomes visible.",
-    "",
-    "If you've built something that saves you time — a script, a dashboard, an automation, a template — Garden is a good home for it. Somebody else may be solving the same problem right now, and what you've already made could be the answer. And while you're there, take a look at what your colleagues have put together. You might find something that changes how you work.",
-    "",
-    "What's worth sharing:",
-    "- Scripts and automations that cut down on repetitive work",
-    "- Dashboards and reports you've put together",
-    "- Templates, tools, or workflows others might find useful",
-    "",
-    "It only takes a couple minutes to submit.",
-    "",
-    `Add a resource: ${submitUrl}`,
-    `Browse the library: ${homeUrl}`,
-    "",
-    `You're receiving this from Garden.`,
     `Manage your email preferences: ${profileUrl}`,
   ].join("\n");
 
