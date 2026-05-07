@@ -24,6 +24,9 @@ export default defineSchema({
     hotScore: v.optional(v.number()),
     versionCount: v.optional(v.number()),
     lastVersionAt: v.optional(v.number()),
+    upvoteCount: v.optional(v.number()),
+    commentCount: v.optional(v.number()),
+    adoptionCount: v.optional(v.number()),
   })
     .searchIndex("allFields", { searchField: "allFields" })
     .index("by_entryId", ["entryId"])

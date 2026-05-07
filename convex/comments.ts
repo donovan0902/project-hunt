@@ -29,9 +29,11 @@ export const addComment = mutation({
     if (project) {
       const now = Date.now();
       const newEngagementScore = (project.engagementScore ?? 0) + 1;
+      const newCommentCount = (project.commentCount ?? 0) + 1;
       const newHotScore = calculateHotScore(newEngagementScore, project._creationTime, now, project.lastVersionAt ?? undefined);
       await ctx.db.patch(args.projectId, {
         engagementScore: newEngagementScore,
+        commentCount: newCommentCount,
         hotScore: newHotScore,
       });
       await propagateHotScoreToMemberships(ctx, args.projectId, newHotScore);
@@ -160,9 +162,11 @@ export const deleteComment = mutation({
     if (project) {
       const now = Date.now();
       const newEngagementScore = Math.max(0, (project.engagementScore ?? 0) - 1);
+      const newCommentCount = Math.max(0, (project.commentCount ?? 0) - 1);
       const newHotScore = calculateHotScore(newEngagementScore, project._creationTime, now, project.lastVersionAt ?? undefined);
       await ctx.db.patch(comment.projectId, {
         engagementScore: newEngagementScore,
+        commentCount: newCommentCount,
         hotScore: newHotScore,
       });
       await propagateHotScoreToMemberships(ctx, comment.projectId, newHotScore);

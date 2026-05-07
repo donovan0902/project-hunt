@@ -58,9 +58,11 @@ export const toggleUpvote = mutation({
       await ctx.db.delete(existingUpvote._id);
       const now = Date.now();
       const newEngagementScore = Math.max(0, (project.engagementScore ?? 0) - 1);
+      const newUpvoteCount = Math.max(0, (project.upvoteCount ?? 0) - 1);
       const newHotScore = calculateHotScore(newEngagementScore, project._creationTime, now, project.lastVersionAt ?? undefined);
       await ctx.db.patch(args.projectId, {
         engagementScore: newEngagementScore,
+        upvoteCount: newUpvoteCount,
         hotScore: newHotScore,
       });
       await propagateHotScoreToMemberships(ctx, args.projectId, newHotScore);
@@ -82,9 +84,11 @@ export const toggleUpvote = mutation({
         createdAt: now,
       });
       const newEngagementScore = (project.engagementScore ?? 0) + 1;
+      const newUpvoteCount = (project.upvoteCount ?? 0) + 1;
       const newHotScore = calculateHotScore(newEngagementScore, project._creationTime, now, project.lastVersionAt ?? undefined);
       await ctx.db.patch(args.projectId, {
         engagementScore: newEngagementScore,
+        upvoteCount: newUpvoteCount,
         hotScore: newHotScore,
       });
       await propagateHotScoreToMemberships(ctx, args.projectId, newHotScore);
@@ -120,6 +124,9 @@ export const toggleFollow = mutation({
     }
     if (existingFollow) {
       await ctx.db.delete(existingFollow._id);
+      await ctx.db.patch(args.projectId, {
+        adoptionCount: Math.max(0, (project.adoptionCount ?? 0) - 1),
+      });
       await incrementalRemoveEngagedProject(ctx, user._id, args.projectId);
       return { followed: false };
     } else {
@@ -127,6 +134,9 @@ export const toggleFollow = mutation({
         projectId: args.projectId,
         userId: user._id,
         createdAt: Date.now(),
+      });
+      await ctx.db.patch(args.projectId, {
+        adoptionCount: (project.adoptionCount ?? 0) + 1,
       });
       if (project.userId !== user._id) {
         await emitNotificationEvent(ctx, {
@@ -165,11 +175,8 @@ export const getUpvoteCount = query({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    const upvotes = await ctx.db
-      .query("upvotes")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .collect();
-    return upvotes.length;
+    const project = await ctx.db.get(args.projectId);
+    return project?.upvoteCount ?? 0;
   },
 });
 
