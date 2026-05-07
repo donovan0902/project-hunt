@@ -2,7 +2,7 @@ import type { Id, Doc } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { getAllSpacesForProject } from "./spaces";
 
-const HOT_SCORE_GRAVITY = 1.0;
+const HOT_SCORE_GRAVITY = 1.8;
 const HOT_SCORE_AGE_OFFSET = 2;
 
 /**
