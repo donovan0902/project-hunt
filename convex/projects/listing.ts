@@ -389,58 +389,66 @@ export const getById = query({
     if (!project) {
       return null;
     }
-    const upvotes = await ctx.db
-      .query("upvotes")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .collect();
-    const follows = await ctx.db
+    const currentUser = await getCurrentUser(ctx);
+    const userUpvotePromise = currentUser
+      ? ctx.db
+          .query("upvotes")
+          .withIndex("by_project_and_user", (q) =>
+            q.eq("projectId", args.projectId).eq("userId", currentUser._id)
+          )
+          .first()
+      : Promise.resolve(null);
+    const userAdoptionPromise = currentUser
+      ? ctx.db
+          .query("adoptions")
+          .withIndex("by_project_and_user", (q) =>
+            q.eq("projectId", args.projectId).eq("userId", currentUser._id)
+          )
+          .first()
+      : Promise.resolve(null);
+    const recentFollowsPromise = ctx.db
       .query("adoptions")
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .order("desc")
-      .collect();
-    const currentUser = await getCurrentUser(ctx);
-    let hasUpvoted = false;
-    let hasFollowed = false;
-    if (currentUser) {
-      const userUpvote = await ctx.db
-        .query("upvotes")
-        .withIndex("by_project_and_user", (q) =>
-          q.eq("projectId", args.projectId).eq("userId", currentUser._id)
-        )
-        .first();
-      hasUpvoted = !!userUpvote;
-      hasFollowed = follows.some((a) => a.userId === currentUser._id);
-    }
-    const creator = await ctx.db.get(project.userId);
-    let teamName = "";
-    if (project.teamId) {
-      const team = await ctx.db.get(project.teamId);
-      teamName = team?.name ?? "";
-    }
-    const [followersWithInfo, spaces] = await Promise.all([
-      Promise.all(
-        follows.slice(0, 6).map(async (follow) => {
-          const user = await ctx.db.get(follow.userId);
-          return {
-            _id: follow.userId,
-            name: user?.name ?? "Unknown User",
-            avatarUrl: user?.avatarUrlId ?? "",
-          };
-        })
-      ),
-      getAllSpacesForProject(ctx, args.projectId),
-    ]);
+      .take(6);
+    const creatorPromise = ctx.db.get(project.userId);
+    const teamPromise = project.teamId
+      ? ctx.db.get(project.teamId)
+      : Promise.resolve(null);
+    const spacesPromise = getAllSpacesForProject(ctx, args.projectId);
+    const [userUpvote, userAdoption, recentFollows, creator, team, spaces] =
+      await Promise.all([
+        userUpvotePromise,
+        userAdoptionPromise,
+        recentFollowsPromise,
+        creatorPromise,
+        teamPromise,
+        spacesPromise,
+      ]);
+    const hasUpvoted = !!userUpvote;
+    const hasFollowed = !!userAdoption;
+    const teamName = team?.name ?? "";
+    const followersWithInfo = await Promise.all(
+      recentFollows.map(async (follow) => {
+        const user = await ctx.db.get(follow.userId);
+        return {
+          _id: follow.userId,
+          name: user?.name ?? "Unknown User",
+          avatarUrl: user?.avatarUrlId ?? "",
+        };
+      })
+    );
     return {
       ...project,
       team: teamName,
-      upvotes: upvotes.length,
+      upvotes: project.upvoteCount ?? 0,
       viewCount: project.viewCount ?? 0,
       hasUpvoted,
       creatorName: creator?.name ?? "Unknown User",
       creatorAvatar: creator?.avatarUrlId ?? "",
       focusArea: spaces.primary,
       additionalFocusAreas: spaces.secondary,
-      followerCount: follows.length,
+      followerCount: project.adoptionCount ?? 0,
       followers: followersWithInfo,
       hasFollowed,
     };
