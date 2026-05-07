@@ -175,11 +175,8 @@ export const getUpvoteCount = query({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    const upvotes = await ctx.db
-      .query("upvotes")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .collect();
-    return upvotes.length;
+    const project = await ctx.db.get(args.projectId);
+    return project?.upvoteCount ?? 0;
   },
 });
 
