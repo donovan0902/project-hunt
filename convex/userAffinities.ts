@@ -14,6 +14,10 @@ const ENGAGED_PENALTY = -0.3;
 const MAX_BOOST = 2.0;
 const MIN_BOOST = -0.3;
 
+// Dampen the base hot score so personalization boosts have more relative pull.
+// pow < 1 compresses the dynamic range while preserving order.
+const BASE_SCORE_EXPONENT = 0.5;
+
 // Recency decay: full weight within 7 days, linear decay to 0.3 over 90 days
 const FULL_WEIGHT_MS = 7 * 24 * 60 * 60 * 1000;
 const DECAY_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
@@ -240,9 +244,10 @@ async function scoreProjects(
     }
 
     const clampedBoost = clamp(boost, MIN_BOOST, MAX_BOOST);
+    const dampenedBase = Math.pow(Math.max(baseScore, 0), BASE_SCORE_EXPONENT);
     entries.push({
       projectId: project._id,
-      personalizedScore: baseScore * (1 + clampedBoost),
+      personalizedScore: dampenedBase * (1 + clampedBoost),
     });
   }
 
@@ -473,7 +478,11 @@ export const injectNewProjectIntoFeeds = internalMutation({
       }
 
       const clampedBoost = clamp(boost, MIN_BOOST, MAX_BOOST);
-      const personalizedScore = (project.hotScore ?? 0) * (1 + clampedBoost);
+      const dampenedBase = Math.pow(
+        Math.max(project.hotScore ?? 0, 0),
+        BASE_SCORE_EXPONENT
+      );
+      const personalizedScore = dampenedBase * (1 + clampedBoost);
 
       await ctx.db.insert("userFeedEntries", {
         userId: affinity.userId,
