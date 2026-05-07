@@ -27,16 +27,7 @@ export async function enrichProjects(
 ) {
   return Promise.all(
     projects.map(async (project) => {
-      const [upvotes, comments, creator, team, mediaFiles, follows, spaces] = await Promise.all([
-        ctx.db
-          .query("upvotes")
-          .withIndex("by_project", (q) => q.eq("projectId", project._id))
-          .collect(),
-        ctx.db
-          .query("comments")
-          .withIndex("by_project", (q) => q.eq("projectId", project._id))
-          .filter((q) => q.neq(q.field("isDeleted"), true))
-          .collect(),
+      const [creator, team, mediaFiles, topFollows, spaces, hasUpvoted, hasFollowed] = await Promise.all([
         ctx.db.get(project.userId),
         project.teamId ? ctx.db.get(project.teamId) : Promise.resolve(null),
         ctx.db
@@ -48,8 +39,26 @@ export async function enrichProjects(
           .query("adoptions")
           .withIndex("by_project", (q) => q.eq("projectId", project._id))
           .order("desc")
-          .collect(),
+          .take(4),
         getAllSpacesForProject(ctx, project._id),
+        userId
+          ? ctx.db
+              .query("upvotes")
+              .withIndex("by_project_and_user", (q) =>
+                q.eq("projectId", project._id).eq("userId", userId)
+              )
+              .first()
+              .then((u) => u !== null)
+          : Promise.resolve(false),
+        userId
+          ? ctx.db
+              .query("adoptions")
+              .withIndex("by_project_and_user", (q) =>
+                q.eq("projectId", project._id).eq("userId", userId)
+              )
+              .first()
+              .then((a) => a !== null)
+          : Promise.resolve(false),
       ]);
 
       const previewMedia = await Promise.all(
@@ -62,7 +71,7 @@ export async function enrichProjects(
       );
 
       const followersWithInfo = await Promise.all(
-        follows.slice(0, 4).map(async (follow) => {
+        topFollows.map(async (follow) => {
           const user = await ctx.db.get(follow.userId);
           return {
             _id: follow.userId,
@@ -75,18 +84,18 @@ export async function enrichProjects(
       return {
         ...project,
         team: team?.name ?? "",
-        upvotes: upvotes.length,
+        upvotes: project.upvoteCount ?? 0,
         viewCount: project.viewCount ?? 0,
-        commentCount: comments.length,
-        hasUpvoted: userId ? upvotes.some((u) => u.userId === userId) : false,
+        commentCount: project.commentCount ?? 0,
+        hasUpvoted,
         creatorName: creator?.name ?? "Unknown User",
         creatorAvatar: creator?.avatarUrlId ?? "",
         focusArea: spaces.primary,
         additionalFocusAreas: spaces.secondary,
         previewMedia,
-        followerCount: follows.length,
+        followerCount: project.adoptionCount ?? 0,
         followers: followersWithInfo,
-        hasFollowed: userId ? follows.some((a) => a.userId === userId) : false,
+        hasFollowed,
       };
     })
   );
