@@ -154,20 +154,14 @@ function renderOwnProjectRows(payload: WeeklyDigestPayload, baseUrl: string): st
       const projectUrl = joinUrl(baseUrl, `/project/${project.projectId}`);
       return `
         <tr>
-          <td style="padding: 0 0 16px;">
-            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse: collapse; border: 1px solid #d4d4d8; border-radius: 12px;">
-              <tr>
-                <td style="padding: 16px 18px;">
-                  <div style="font-size: 16px; font-weight: 600; color: #18181b; margin: 0 0 8px;">
-                    ${escapeHtml(project.projectName)}
-                  </div>
-                  <div style="font-size: 14px; line-height: 1.6; color: #52525b; margin: 0 0 12px;">
-                    ${formatCount(project.newUpvotes, "upvote")} | ${formatCount(project.newComments, "comment")} | ${formatCount(project.newFollows, "new follower")} | ${formatCount(project.newViews, "view")}
-                  </div>
-                  <a href="${escapeHtml(projectUrl)}" style="color: #166534; font-size: 14px; font-weight: 600; text-decoration: none;">View project</a>
-                </td>
-              </tr>
-            </table>
+          <td style="padding: 0 0 20px;">
+            <div style="font-size: 15px; font-weight: 600; color: #18181b; margin: 0 0 4px;">
+              ${escapeHtml(project.projectName)}
+            </div>
+            <div style="font-size: 13px; line-height: 1.6; color: #71717a; margin: 0 0 8px;">
+              ${formatCount(project.newUpvotes, "upvote")} · ${formatCount(project.newComments, "comment")} · ${formatCount(project.newFollows, "new follower")} · ${formatCount(project.newViews, "view")}
+            </div>
+            <a href="${escapeHtml(projectUrl)}" style="color: #166534; font-size: 13px; font-weight: 600; text-decoration: none;">View project →</a>
           </td>
         </tr>
       `;
@@ -205,42 +199,36 @@ function renderFollowedSpaces(payload: WeeklyDigestPayload, baseUrl: string): st
 
       return `
         <tr>
-          <td style="padding: 0 0 16px;">
-            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse: collapse; border: 1px solid #d4d4d8; border-radius: 12px;">
-              <tr>
-                <td style="padding: 16px 18px;">
-                  <div style="margin: 0 0 12px;">
-                    <a href="${escapeHtml(spaceUrl)}" style="font-size: 16px; font-weight: 600; color: #18181b; text-decoration: none;">
-                      ${escapeHtml(space.focusAreaIcon ? `${space.focusAreaIcon} ${space.focusAreaName}` : space.focusAreaName)}
-                    </a>
+          <td style="padding: 0 0 24px;">
+            <div style="margin: 0 0 10px;">
+              <a href="${escapeHtml(spaceUrl)}" style="font-size: 15px; font-weight: 600; color: #18181b; text-decoration: none;">
+                ${escapeHtml(space.focusAreaIcon ? `${space.focusAreaIcon} ${space.focusAreaName}` : space.focusAreaName)}
+              </a>
+            </div>
+            ${
+              projectsHtml
+                ? `
+                  <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #a1a1aa; margin: 0 0 6px;">
+                    Top projects
                   </div>
-                  ${
-                    projectsHtml
-                      ? `
-                        <div style="font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #71717a; margin: 0 0 8px;">
-                          Top projects
-                        </div>
-                        <ul style="padding-left: 18px; margin: 0 0 14px;">
-                          ${projectsHtml}
-                        </ul>
-                      `
-                      : ""
-                  }
-                  ${
-                    threadsHtml
-                      ? `
-                        <div style="font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #71717a; margin: 0 0 8px;">
-                          New threads
-                        </div>
-                        <ul style="padding-left: 18px; margin: 0;">
-                          ${threadsHtml}
-                        </ul>
-                      `
-                      : ""
-                  }
-                </td>
-              </tr>
-            </table>
+                  <ul style="padding-left: 16px; margin: 0 0 12px;">
+                    ${projectsHtml}
+                  </ul>
+                `
+                : ""
+            }
+            ${
+              threadsHtml
+                ? `
+                  <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #a1a1aa; margin: 0 0 6px;">
+                    New threads
+                  </div>
+                  <ul style="padding-left: 16px; margin: 0;">
+                    ${threadsHtml}
+                  </ul>
+                `
+                : ""
+            }
           </td>
         </tr>
       `;
@@ -348,7 +336,7 @@ export function renderWeeklyDigestEmail(args: {
                     ${
                       getTotalInteractions(payload) > 0
                         ? `
-                          <div style="font-size: 14px; line-height: 1.6; color: #52525b; background-color: #f9fafb; border: 1px solid #e4e4e7; border-radius: 12px; padding: 14px 16px;">
+                          <div style="font-size: 13px; line-height: 1.6; color: #71717a;">
                             ${escapeHtml(introSummary)}
                           </div>
                         `
