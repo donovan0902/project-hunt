@@ -34,6 +34,14 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const readinessSliderValues = ["just_an_idea", "early_prototype", "mostly_working", "ready_to_use"] as const;
 const readinessSliderLabels = ["Just an idea", "Early prototype", "Mostly working", "Ready to use"];
@@ -46,6 +54,7 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
   const projectMedia = useQuery(api.projects.getProjectMedia, { projectId });
   const projectFiles = useQuery(api.projects.getProjectFiles, { projectId });
   const updateProject = useAction(api.projects.updateProject);
+  const deleteProjectCascade = useAction(api.projects.deleteProjectCascade);
   const generateUploadUrl = useMutation(api.projects.generateUploadUrl);
   const deleteMediaFromProject = useMutation(api.projects.deleteMediaFromProject);
   const addMediaToProject = useMutation(api.projects.addMediaToProject);
@@ -71,6 +80,8 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
   });
   const [links, setLinks] = useState<LinkItem[]>([{ url: "", label: "" }]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<NewFileItem[]>([]);
   const [newProjectFiles, setNewProjectFiles] = useState<NewProjectFileItem[]>([]);
@@ -206,6 +217,20 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
       toast.error("Failed to update project. Please try again.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteProjectCascade({ projectId });
+      toast.success("Project deleted.");
+      router.push("/");
+    } catch (error) {
+      console.error("Failed to delete project:", error);
+      toast.error("Failed to delete project. Please try again.");
+      setIsDeleting(false);
+      setDeleteOpen(false);
     }
   };
 
@@ -464,9 +489,56 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
               </div>
 
             </section>
+
+            <section className="rounded-2xl border border-red-200 bg-white p-6">
+              <h2 className="text-lg font-semibold text-zinc-900">Danger zone</h2>
+              <p className="mt-1 text-sm text-zinc-600">
+                Permanently delete this project. This removes its comments,
+                upvotes, adoptions, files, version history, and feed entries.
+                This cannot be undone.
+              </p>
+              <Button
+                type="button"
+                variant="destructive"
+                className="mt-4"
+                onClick={() => setDeleteOpen(true)}
+                disabled={isSubmitting || isDeleting}
+              >
+                Delete project
+              </Button>
+            </section>
           </div>
         </form>
       </main>
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete this project?</DialogTitle>
+            <DialogDescription>
+              This will permanently delete this project along with all its
+              comments, upvotes, adoptions, files, and version history. This
+              action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

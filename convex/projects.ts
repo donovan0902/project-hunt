@@ -28,6 +28,8 @@ export {
   create,
   updateProject,
   cancelProject,
+  cascadeDeleteProjectChildren,
+  deleteProjectCascade,
   backfillProject,
   backfillEngagementScores,
   processDescriptionMentions,
