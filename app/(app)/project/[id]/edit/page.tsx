@@ -229,8 +229,8 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
     } catch (error) {
       console.error("Failed to delete project:", error);
       toast.error("Failed to delete project. Please try again.");
+    } finally {
       setIsDeleting(false);
-      setDeleteOpen(false);
     }
   };
 
@@ -418,14 +418,14 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
               </div>
 
               <div className="flex items-center gap-3 pt-4">
-                <Button type="submit" className="whitespace-nowrap" disabled={isSubmitting}>
+                <Button type="submit" className="whitespace-nowrap" disabled={isSubmitting || isDeleting}>
                   {isSubmitting ? "Saving..." : "Save Changes"}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => router.push(`/project/${id}`)}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isDeleting}
                 >
                   Cancel
                 </Button>
@@ -511,7 +511,7 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
         </form>
       </main>
 
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <Dialog open={deleteOpen} onOpenChange={(open) => { if (!isDeleting) setDeleteOpen(open); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete this project?</DialogTitle>
