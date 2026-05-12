@@ -378,17 +378,23 @@ export const updateProject = action({
 });
 
 /**
- * Cascade-deletes every child row of a project in a single transaction and
- * returns the storage IDs + RAG entry ID that the caller (an action) must
- * clean up outside the transaction. Does NOT delete the project row itself —
- * the orchestrating action does that last so the project remains queryable
- * while orphaned media/RAG are still being torn down.
+ * Atomically deletes a project and every one of its child rows in a single
+ * transaction. Returns the storage IDs + RAG entry ID for the caller (an
+ * action) to clean up outside the transaction as best-effort work — if those
+ * external cleanups fail, the DB state is still consistent (project gone, no
+ * orphan rows) and we just leak storage blobs / a RAG entry that can be
+ * reclaimed later.
  */
 export const cascadeDeleteProjectChildren = internalMutationFromFunctions({
   args: {
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project) {
+      return { storageIds: [] as Id<"_storage">[], entryId: undefined };
+    }
+    const entryId = project.entryId;
     const storageIds: Id<"_storage">[] = [];
 
     // mediaFiles
@@ -495,7 +501,9 @@ export const cascadeDeleteProjectChildren = internalMutationFromFunctions({
     // on the 6-hour refreshAllFeeds cron (see CLAUDE.md note 36) to scrub
     // stale ids rather than scanning every user synchronously here.
 
-    return { storageIds };
+    await ctx.db.delete(args.projectId);
+
+    return { storageIds, entryId };
   },
 });
 
@@ -518,22 +526,21 @@ export const deleteProjectCascade = action({
       throw new Error("You can only delete your own projects");
     }
 
-    const { storageIds } = await ctx.runMutation(
+    const { storageIds, entryId } = await ctx.runMutation(
       internal.projects.cascadeDeleteProjectChildren,
       { projectId: args.projectId }
     );
 
+    // Best-effort cleanup of external resources. The DB is already consistent
+    // (project + children deleted atomically above); failures here leak storage
+    // blobs / a RAG entry but don't corrupt app state.
     await Promise.all(
       storageIds.map((id) => ctx.storage.delete(id).catch(() => undefined))
     );
 
-    if (project.entryId) {
-      await rag.delete(ctx, { entryId: project.entryId as EntryId });
+    if (entryId) {
+      await rag.delete(ctx, { entryId: entryId as EntryId }).catch(() => undefined);
     }
-
-    await ctx.runMutation(internal.projects.deleteProject, {
-      projectId: args.projectId,
-    });
   },
 });
 
