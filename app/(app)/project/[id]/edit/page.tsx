@@ -46,6 +46,13 @@ import {
 const readinessSliderValues = ["just_an_idea", "early_prototype", "mostly_working", "ready_to_use"] as const;
 const readinessSliderLabels = ["Just an idea", "Early prototype", "Mostly working", "Ready to use"];
 
+/**
+ * Page component for editing a project: lets the user update title, description, links, spaces, readiness status,
+ * manage (upload/reorder/delete) media and files, and permanently delete the project.
+ *
+ * @param params - An object whose resolved `id` is the project id to edit.
+ * @returns The Edit Project page's React element.
+ */
 export default function EditProject({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { id } = use(params);
