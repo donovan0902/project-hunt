@@ -1,7 +1,7 @@
 import { mutation, action, internalQuery } from "../_generated/server";
 import { internalMutation as internalMutationFromFunctions } from "../functions";
 import { v } from "convex/values";
-import { internal } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import { rag } from "../rag";
 import type { Id } from "../_generated/dataModel";
 import type { EntryId } from "@convex-dev/rag";
@@ -377,11 +377,178 @@ export const updateProject = action({
   },
 });
 
-export const cancelProject = action({
+/**
+ * Atomically deletes a project and every one of its child rows in a single
+ * transaction. Returns the storage IDs + RAG entry ID for the caller (an
+ * action) to clean up outside the transaction as best-effort work — if those
+ * external cleanups fail, the DB state is still consistent (project gone, no
+ * orphan rows) and we just leak storage blobs / a RAG entry that can be
+ * reclaimed later.
+ */
+export const cascadeDeleteProjectChildren = internalMutationFromFunctions({
   args: {
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project) {
+      return { storageIds: [] as Id<"_storage">[], entryId: undefined };
+    }
+    const entryId = project.entryId;
+    const storageIds: Id<"_storage">[] = [];
+
+    // mediaFiles
+    const media = await ctx.db
+      .query("mediaFiles")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const row of media) {
+      storageIds.push(row.storageId);
+      await ctx.db.delete(row._id);
+    }
+
+    // projectFiles
+    const files = await ctx.db
+      .query("projectFiles")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const row of files) {
+      storageIds.push(row.storageId);
+      await ctx.db.delete(row._id);
+    }
+
+    // projectVersions + versionFiles
+    const versions = await ctx.db
+      .query("projectVersions")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const version of versions) {
+      const vFiles = await ctx.db
+        .query("versionFiles")
+        .withIndex("by_version", (q) => q.eq("versionId", version._id))
+        .collect();
+      for (const vf of vFiles) {
+        storageIds.push(vf.storageId);
+        await ctx.db.delete(vf._id);
+      }
+      await ctx.db.delete(version._id);
+    }
+
+    // upvotes
+    const upvotes = await ctx.db
+      .query("upvotes")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    await Promise.all(upvotes.map((u) => ctx.db.delete(u._id)));
+
+    // adoptions
+    const adoptions = await ctx.db
+      .query("adoptions")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    await Promise.all(adoptions.map((a) => ctx.db.delete(a._id)));
+
+    // projectViews
+    const views = await ctx.db
+      .query("projectViews")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    await Promise.all(views.map((v) => ctx.db.delete(v._id)));
+
+    // linkClickCounts
+    const clicks = await ctx.db
+      .query("linkClickCounts")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    await Promise.all(clicks.map((c) => ctx.db.delete(c._id)));
+
+    // comments + commentUpvotes
+    const comments = await ctx.db
+      .query("comments")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const comment of comments) {
+      const cUpvotes = await ctx.db
+        .query("commentUpvotes")
+        .withIndex("by_comment", (q) => q.eq("commentId", comment._id))
+        .collect();
+      await Promise.all(cUpvotes.map((u) => ctx.db.delete(u._id)));
+      await ctx.db.delete(comment._id);
+    }
+
+    // notifications scoped to this project
+    const notifs = await ctx.db
+      .query("notifications")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    await Promise.all(notifs.map((n) => ctx.db.delete(n._id)));
+
+    // userFeedEntries
+    const feedEntries = await ctx.db
+      .query("userFeedEntries")
+      .withIndex("by_projectId", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    await Promise.all(feedEntries.map((f) => ctx.db.delete(f._id)));
+
+    // projectSpaces membership rows
+    const memberships = await ctx.db
+      .query("projectSpaces")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    await Promise.all(memberships.map((m) => ctx.db.delete(m._id)));
+
+    // userAffinities.engagedProjectIds is an array on every user doc; we rely
+    // on the 6-hour refreshAllFeeds cron (see CLAUDE.md note 36) to scrub
+    // stale ids rather than scanning every user synchronously here.
+
+    await ctx.db.delete(args.projectId);
+
+    return { storageIds, entryId };
+  },
+});
+
+export const deleteProjectCascade = action({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.runQuery(internal.projects.getCurrentUserInternal, {});
+    if (!user) {
+      throw new Error("Unauthorized");
+    }
+    const project = await ctx.runQuery(internal.projects.getProject, {
+      projectId: args.projectId,
+    });
+    if (!project) {
+      throw new Error("Project not found");
+    }
+    if (project.userId !== user._id) {
+      throw new Error("You can only delete your own projects");
+    }
+
+    const { storageIds, entryId } = await ctx.runMutation(
+      internal.projects.cascadeDeleteProjectChildren,
+      { projectId: args.projectId }
+    );
+
+    // Best-effort cleanup of external resources. The DB is already consistent
+    // (project + children deleted atomically above); failures here leak storage
+    // blobs / a RAG entry but don't corrupt app state.
+    await Promise.all(
+      storageIds.map((id) => ctx.storage.delete(id).catch(() => undefined))
+    );
+
+    if (entryId) {
+      await rag.delete(ctx, { entryId: entryId as EntryId }).catch(() => undefined);
+    }
+  },
+});
+
+export const cancelProject = action({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args): Promise<void> => {
     const project = await ctx.runQuery(internal.projects.getProject, {
       projectId: args.projectId,
     });
@@ -391,13 +558,7 @@ export const cancelProject = action({
     if (project.status !== "pending") {
       throw new Error("Can only cancel pending projects");
     }
-    if (project.entryId) {
-      await rag.delete(ctx, { entryId: project.entryId as EntryId });
-    }
-    await ctx.runMutation(internal.projects.deleteProjectMemberships, {
-      projectId: args.projectId,
-    });
-    await ctx.runMutation(internal.projects.deleteProject, {
+    await ctx.runAction(api.projects.deleteProjectCascade, {
       projectId: args.projectId,
     });
   },

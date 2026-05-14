@@ -138,7 +138,8 @@ export default defineSchema({
     .index("by_recipient_and_read", ["recipientUserId", "isRead"])
     .index("by_recipient_last_activity", ["recipientUserId", "lastActivityAt"])
     .index("by_recipient_project_type", ["recipientUserId", "projectId", "type"])
-    .index("by_recipient_thread_type", ["recipientUserId", "threadId", "type"]),
+    .index("by_recipient_thread_type", ["recipientUserId", "threadId", "type"])
+    .index("by_project", ["projectId"]),
   users: defineTable({
     name: v.string(),
     email: v.optional(v.string()),
@@ -299,5 +300,6 @@ export default defineSchema({
     computedAt: v.number(),
   })
     .index("by_userId_personalizedScore", ["userId", "personalizedScore"])
-    .index("by_userId_projectId", ["userId", "projectId"]),
+    .index("by_userId_projectId", ["userId", "projectId"])
+    .index("by_projectId", ["projectId"]),
 });
