@@ -245,51 +245,22 @@ function renderTextVersion(
   const sections: string[] = [];
   const dateRange = formatDateRange(payload.periodStart, payload.periodEnd);
 
-  sections.push(`Garden weekly digest (${dateRange})`);
+  sections.push(`A note from the creator (${dateRange})`);
   sections.push(`Hi ${recipientName},`);
-  sections.push(`Here's what happened in Garden this week.`);
-
-  if (payload.ownProjectActivity.length > 0) {
-    sections.push("");
-    sections.push("Your projects this week");
-    sections.push(renderOwnProjectSummary(payload));
-
-    for (const project of payload.ownProjectActivity) {
-      sections.push(
-        `- ${project.projectName}: ${formatCount(project.newUpvotes, "upvote")}, ${formatCount(project.newComments, "comment")}, ${formatCount(project.newFollows, "new follower")}, ${formatCount(project.newViews, "view")}`
-      );
-      sections.push(`  ${joinUrl(baseUrl, `/project/${project.projectId}`)}`);
-    }
-  }
-
-  if (payload.followedSpaceActivity.length > 0) {
-    sections.push("");
-    sections.push("New this week on Garden");
-
-    for (const space of payload.followedSpaceActivity) {
-      sections.push(`- ${space.focusAreaIcon ? `${space.focusAreaIcon} ` : ""}${space.focusAreaName}`);
-      if (space.topProjects.length > 0) {
-        sections.push("  Top projects:");
-        for (const project of space.topProjects) {
-          sections.push(
-            `  - ${project.projectName} by ${project.creatorName} (${formatCount(project.upvotes, "upvote")})`
-          );
-          sections.push(`    ${joinUrl(baseUrl, `/project/${project.projectId}`)}`);
-        }
-      }
-      if (space.newThreads.length > 0) {
-        sections.push("  New threads:");
-        for (const thread of space.newThreads) {
-          sections.push(`  - ${thread.threadTitle} by ${thread.creatorName}`);
-          sections.push(`    ${joinUrl(baseUrl, `/thread/${thread.threadId}`)}`);
-        }
-      }
-    }
-  }
-
+  sections.push("");
+  sections.push("Quick personal note this week instead of the regular digest.");
+  sections.push("");
+  sections.push("We recently had a big jump in sign-ups and are now at 600+ people on Garden.");
+  sections.push("I want to keep making the platform better for as many people as possible, so I created a new space called \"Garden\" where anyone can post feedback (good or bad) and ideas.");
+  sections.push("");
+  sections.push("I've also noticed more requests for help/assistance. Please keep these inside thread posts. The regular feed and tool posts should stay focused on shareable resources, as defined in the content guidelines.");
+  sections.push("");
+  sections.push("As always, thank you for your engagement. Keep sharing useful things, and feel free to reach out to me directly if you have any questions.");
   sections.push("");
   sections.push(`Open Garden: ${joinUrl(baseUrl, "/")}`);
-  sections.push("You're receiving this weekly digest from Garden. This is an automated email.");
+  sections.push(`Content guidelines: ${joinUrl(baseUrl, "/guidelines")}`);
+  sections.push(`Share feedback in Garden space: ${joinUrl(baseUrl, "/")}`);
+  sections.push("You're receiving this weekly email from Garden.");
   sections.push(`Manage your email preferences: ${profileUrl}`);
 
   return sections.join("\n");
@@ -305,9 +276,9 @@ export function renderWeeklyDigestEmail(args: {
   const dateRange = formatDateRange(payload.periodStart, payload.periodEnd);
   const subject = getSubject(payload);
   const preheader =
-    "Activity on your projects and new content from across Garden.";
+    "A personal note from the creator of Garden.";
   const homeUrl = joinUrl(baseUrl, "/");
-  const introSummary = renderOwnProjectSummary(payload);
+  const introSummary = "Quick personal note this week instead of the regular digest.";
 
   const html = `
     <!doctype html>
@@ -328,51 +299,28 @@ export function renderWeeklyDigestEmail(args: {
                 <tr>
                   <td style="padding: 28px 28px 24px; border-bottom: 1px solid #e4e4e7;">
                     <div style="font-size: 28px; font-weight: 700; color: #166534; margin: 0 0 8px;">Garden</div>
-                    <div style="font-size: 14px; color: #71717a; margin: 0 0 12px;">Your week in Garden: ${escapeHtml(dateRange)}</div>
+                    <div style="font-size: 14px; color: #71717a; margin: 0 0 12px;">A note from the creator: ${escapeHtml(dateRange)}</div>
                     <div style="font-size: 24px; font-weight: 700; line-height: 1.3; color: #18181b; margin: 0 0 10px;">Hi ${escapeHtml(recipientName)},</div>
                     <div style="font-size: 15px; line-height: 1.6; color: #3f3f46; margin: 0 0 16px;">
-                      Here's a quick summary of what happened in Garden this week.
+                      Quick personal note this week instead of the regular digest.
                     </div>
-                    ${
-                      getTotalInteractions(payload) > 0
-                        ? `
-                          <div style="font-size: 13px; line-height: 1.6; color: #71717a;">
-                            ${escapeHtml(introSummary)}
-                          </div>
-                        `
-                        : ""
-                    }
+                    <div style="font-size: 13px; line-height: 1.6; color: #71717a;">${escapeHtml(introSummary)}</div>
                   </td>
                 </tr>
-                ${
-                  payload.ownProjectActivity.length > 0
-                    ? `
-                      <tr>
-                        <td style="padding: 24px 28px 8px;">
-                          <div style="font-size: 20px; font-weight: 700; color: #18181b; margin: 0 0 8px;">Your projects this week</div>
-                          <div style="font-size: 14px; line-height: 1.6; color: #52525b; margin: 0 0 16px;">${escapeHtml(introSummary)}</div>
-                          <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse: collapse;">
-                            ${renderOwnProjectRows(payload, baseUrl)}
-                          </table>
-                        </td>
-                      </tr>
-                    `
-                    : ""
-                }
-                ${
-                  payload.followedSpaceActivity.length > 0
-                    ? `
-                      <tr>
-                        <td style="padding: 16px 28px 8px;">
-                          <div style="font-size: 20px; font-weight: 700; color: #18181b; margin: 0 0 16px;">New this week on Garden</div>
-                          <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse: collapse;">
-                            ${renderFollowedSpaces(payload, baseUrl)}
-                          </table>
-                        </td>
-                      </tr>
-                    `
-                    : ""
-                }
+                <tr>
+                  <td style="padding: 24px 28px 8px;">
+                    <div style="font-size: 18px; line-height: 1.7; color: #3f3f46; margin: 0 0 16px;">
+                      We recently had a big jump in sign-ups and are now at <strong>600+</strong> people on Garden.
+                      I want to keep making the platform better for as many people as possible, so I created a new space called <strong>"Garden"</strong> where anyone can post feedback (good or bad) and ideas.
+                    </div>
+                    <div style="font-size: 18px; line-height: 1.7; color: #3f3f46; margin: 0 0 16px;">
+                      I've also noticed more requests for help/assistance. Please keep these inside <strong>thread posts</strong>. The regular feed and tool posts should stay focused on shareable resources, as defined in the content guidelines.
+                    </div>
+                    <div style="font-size: 18px; line-height: 1.7; color: #3f3f46; margin: 0 0 8px;">
+                      As always, thank you for your engagement. Keep sharing useful things, and feel free to reach out to me directly if you have any questions.
+                    </div>
+                  </td>
+                </tr>
                 <tr>
                   <td style="padding: 0 28px 28px;">
                     <a href="${escapeHtml(homeUrl)}" style="display: inline-block; background-color: #166534; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 700; padding: 12px 18px; border-radius: 999px;">Open Garden</a>
@@ -380,7 +328,7 @@ export function renderWeeklyDigestEmail(args: {
                 </tr>
                 <tr>
                   <td style="padding: 0 28px 28px; font-size: 12px; line-height: 1.6; color: #71717a;">
-                    This is an automated email from Garden.
+                    You're receiving this weekly email from Garden.
                     <a href="${escapeHtml(profileUrl)}" style="color: #71717a;">Manage your email preferences</a>
                   </td>
                 </tr>
