@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import "react-quill-new/dist/quill.snow.css";
+import type ReactQuillComponent from "react-quill-new";
 import type { MentionSearchFn } from "./QuillMentionModule";
 
 const ReactQuill = dynamic(
@@ -27,7 +28,7 @@ const ReactQuill = dynamic(
       <div className="min-h-28 rounded-md border border-zinc-200 bg-white" />
     ),
   }
-);
+) as typeof ReactQuillComponent;
 
 const BASE_TOOLBAR = [
   ["bold", "italic", "underline", "strike"],
@@ -44,17 +45,6 @@ const IMAGE_TOOLBAR = [
 ];
 
 const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
-
-type QuillEditor = {
-  getSelection: (focus: boolean) => { index: number } | null;
-  getLength: () => number;
-  insertEmbed: (index: number, type: string, value: string) => void;
-  setSelection: (index: number, length: number) => void;
-};
-
-type ReactQuillHandle = {
-  getEditor: () => QuillEditor;
-};
 
 interface RichTextEditorProps {
   value: string;
@@ -79,7 +69,7 @@ export function RichTextEditor({
   onMentionSearch,
 }: RichTextEditorProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const quillRef = useRef<ReactQuillHandle | null>(null);
+  const quillRef = useRef<ReactQuillComponent | null>(null);
 
   // Intercept paste/drop of images to prevent Quill from embedding base64 data URLs,
   // which can exceed Convex's 1 MiB document size limit.
