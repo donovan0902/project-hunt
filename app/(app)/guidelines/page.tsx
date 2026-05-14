@@ -17,29 +17,19 @@ export default function GuidelinesPage() {
           </p>
         </section>
 
-        {/* What to share */}
+        {/* Posts: Tools & Resources */}
         <section className="space-y-3">
-          <h2 className="text-xl font-semibold text-zinc-900">What you can share</h2>
-          <ul className="list-disc list-inside space-y-2 text-base text-zinc-600">
-            <li>Any tool you built (scripts, automations, dashboards, apps, prompt templates, etc.)</li>
-            <li>Prototypes, early ideas, or rough drafts (use the maturity gauge to set expectations)</li>
-            <li>Literally anything you built to make your job easier (or anyone else&apos;s)</li>
-          </ul>
-        </section>
-
-        {/* Simple is good */}
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold text-zinc-900">Simple is good</h2>
+          <h2 className="text-xl font-semibold text-zinc-900">Posts: tools, scripts & resources</h2>
           <p className="text-base text-zinc-600 leading-relaxed">
-            A 10-line script that saves your team two hours a week is more valuable than a full application nobody uses. Post the simple thing: a formula, template, macro, or dashboard you took the extra time to cobble together in a few minutes. These are exactly what people search for.
+            Share anything useful you built: scripts, automations, dashboards, apps, templates, formulas. Even rough or unfinished work—just set expectations with the maturity level. A 10-line script that saves time is as valuable as a full app.
           </p>
         </section>
 
-        {/* Threads */}
+        {/* Threads: Questions & Discussion */}
         <section className="space-y-3">
-          <h2 className="text-xl font-semibold text-zinc-900">What about threads?</h2>
+          <h2 className="text-xl font-semibold text-zinc-900">Threads: questions & discussion</h2>
           <p className="text-base text-zinc-600 leading-relaxed">
-            The same rules apply. Start a thread to ask questions, share feedback, discuss ideas etc.
+            Use threads to ask for help, troubleshoot problems, share feedback, or discuss ideas. Keep support requests and questions in threads so tool posts stay focused on shareable resources.
           </p>
         </section>
 
