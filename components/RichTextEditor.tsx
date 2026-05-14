@@ -45,6 +45,17 @@ const IMAGE_TOOLBAR = [
 
 const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 
+type QuillEditor = {
+  getSelection: (focus: boolean) => { index: number } | null;
+  getLength: () => number;
+  insertEmbed: (index: number, type: string, value: string) => void;
+  setSelection: (index: number, length: number) => void;
+};
+
+type ReactQuillHandle = {
+  getEditor: () => QuillEditor;
+};
+
 interface RichTextEditorProps {
   value: string;
   onChange: (value: string) => void;
@@ -67,11 +78,8 @@ export function RichTextEditor({
   onImageUpload,
   onMentionSearch,
 }: RichTextEditorProps) {
-  const onImageUploadRef = useRef(onImageUpload);
-  onImageUploadRef.current = onImageUpload;
-  const onMentionSearchRef = useRef(onMentionSearch);
-  onMentionSearchRef.current = onMentionSearch;
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const quillRef = useRef<ReactQuillHandle | null>(null);
 
   // Intercept paste/drop of images to prevent Quill from embedding base64 data URLs,
   // which can exceed Convex's 1 MiB document size limit.
@@ -91,7 +99,7 @@ export function RichTextEditor({
         e.preventDefault();
         e.stopPropagation();
         toast.info(
-          onImageUploadRef.current
+          onImageUpload
             ? "Use the image button in the toolbar to add images."
             : "To add images, use the Screenshots and Clips field in the Files and Media tab."
         );
@@ -106,7 +114,7 @@ export function RichTextEditor({
       el.removeEventListener("paste", blockImageTransfer as EventListener, true);
       el.removeEventListener("drop", blockImageTransfer as EventListener, true);
     };
-  }, []);
+  }, [onImageUpload]);
 
   // Safety net: strip any base64 images that slip past the paste/drop blocker.
   const handleChange = useCallback(
@@ -127,8 +135,7 @@ export function RichTextEditor({
     if (onMentionSearch) {
       base.mention = {
         source: async (query: string) => {
-          if (!onMentionSearchRef.current) return [];
-          return onMentionSearchRef.current(query);
+          return onMentionSearch(query);
         },
       };
     }
@@ -140,8 +147,9 @@ export function RichTextEditor({
       base.toolbar = {
         container: IMAGE_TOOLBAR,
         handlers: {
-          image: function (this: { quill: { getSelection: (focus: boolean) => { index: number } | null; getLength: () => number; insertEmbed: (index: number, type: string, value: string) => void; setSelection: (index: number, length: number) => void } }) {
-            const quill = this.quill;
+          image: () => {
+            const quill = quillRef.current?.getEditor();
+            if (!quill) return;
             const input = document.createElement("input");
             input.type = "file";
             input.accept = ACCEPTED_IMAGE_TYPES.join(",");
@@ -153,7 +161,7 @@ export function RichTextEditor({
                 return;
               }
               try {
-                const url = await onImageUploadRef.current!(file);
+                const url = await onImageUpload(file);
                 const range = quill.getSelection(true);
                 const index = range ? range.index : quill.getLength() - 1;
                 quill.insertEmbed(index, "image", url);
@@ -176,6 +184,7 @@ export function RichTextEditor({
   return (
     <div ref={wrapperRef} className={`rich-text-editor${minimal ? " minimal" : ""}`}>
       <ReactQuill
+        ref={quillRef}
         theme="snow"
         value={value}
         onChange={handleChange}
