@@ -429,6 +429,14 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
                 >
                   Cancel
                 </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => setDeleteOpen(true)}
+                  disabled={isSubmitting || isDeleting}
+                >
+                  Delete project
+                </Button>
               </div>
             </section>
 
@@ -488,24 +496,6 @@ export default function EditProject({ params }: { params: Promise<{ id: string }
                 </div>
               </div>
 
-            </section>
-
-            <section className="rounded-2xl border border-red-200 bg-white p-6">
-              <h2 className="text-lg font-semibold text-zinc-900">Danger zone</h2>
-              <p className="mt-1 text-sm text-zinc-600">
-                Permanently delete this project. This removes its comments,
-                upvotes, adoptions, files, version history, and feed entries.
-                This cannot be undone.
-              </p>
-              <Button
-                type="button"
-                variant="destructive"
-                className="mt-4"
-                onClick={() => setDeleteOpen(true)}
-                disabled={isSubmitting || isDeleting}
-              >
-                Delete project
-              </Button>
             </section>
           </div>
         </form>
