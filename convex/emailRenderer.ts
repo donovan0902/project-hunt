@@ -278,7 +278,6 @@ export function renderWeeklyDigestEmail(args: {
   const preheader =
     "A personal note from the creator of Garden.";
   const homeUrl = joinUrl(baseUrl, "/");
-  const introSummary = "Quick personal note this week instead of the regular digest.";
 
   const html = `
     <!doctype html>
@@ -304,7 +303,6 @@ export function renderWeeklyDigestEmail(args: {
                     <div style="font-size: 15px; line-height: 1.6; color: #3f3f46; margin: 0 0 16px;">
                       Quick personal note this week instead of the regular digest.
                     </div>
-                    <div style="font-size: 13px; line-height: 1.6; color: #71717a;">${escapeHtml(introSummary)}</div>
                   </td>
                 </tr>
                 <tr>
