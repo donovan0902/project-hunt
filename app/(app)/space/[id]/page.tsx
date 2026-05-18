@@ -292,7 +292,7 @@ export default function SpacePage({
             </section>
 
             <aside className="w-full lg:sticky lg:top-20 lg:w-72 xl:w-80">
-            <div className="rounded-xl bg-zinc-100 p-4 space-y-4">
+            <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm space-y-4">
               {/* Member count + join */}
               <div className="flex items-center justify-between lg:hidden">
                 <div className="flex items-center gap-1.5 text-sm text-zinc-500">

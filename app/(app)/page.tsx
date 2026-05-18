@@ -156,7 +156,7 @@ export default function Home() {
             )}
           </div>
 
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-8 self-start rounded-xl border border-zinc-200 bg-white p-5 shadow-sm lg:sticky lg:top-20">
             <TrendingThreads />
           </div>
         </section>
