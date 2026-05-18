@@ -157,7 +157,7 @@ export default function Home() {
             )}
           </div>
 
-          <aside className="self-start lg:sticky lg:top-6">
+          <aside className="self-start">
             <TrendingThreads />
           </aside>
         </section>

@@ -309,7 +309,7 @@ export default function ProfilePage({
           </div>
 
           {isOwner && (
-            <aside className="lg:sticky lg:top-6">
+            <aside>
               <EmailPreferencesSection />
             </aside>
           )}
