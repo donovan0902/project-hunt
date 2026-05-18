@@ -10,6 +10,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import React from "react";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrentUser } from "@/app/useCurrentUser";
 import { ProjectFeedList } from "@/components/ProjectFeedList";
@@ -156,9 +157,9 @@ export default function Home() {
             )}
           </div>
 
-          <div className="flex flex-col gap-8 self-start rounded-xl border border-zinc-200 bg-white p-5 shadow-sm lg:sticky lg:top-20">
+          <aside className="self-start lg:sticky lg:top-6">
             <TrendingThreads />
-          </div>
+          </aside>
         </section>
       </main>
     </div>
@@ -401,60 +402,61 @@ function TrendingThreads() {
   const router = useRouter();
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 px-3">
-        <h3 className="text-lg font-semibold text-zinc-900">Trending Threads</h3>
-      </div>
-
-      {!trendingThreads ? (
-        <div className="space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="animate-pulse space-y-2">
-              <div className="h-4 bg-zinc-200 rounded w-3/4" />
-              <div className="h-3 bg-zinc-200 rounded w-full" />
+    <div className="space-y-3">
+      <h2 className="text-lg font-semibold text-zinc-900">Trending Threads</h2>
+      <Card className="border-zinc-200 bg-zinc-200/80 py-0 shadow-none">
+        <CardContent className="p-2">
+          {!trendingThreads ? (
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="animate-pulse space-y-2">
+                  <div className="h-4 bg-zinc-300 rounded w-3/4" />
+                  <div className="h-3 bg-zinc-300 rounded w-full" />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      ) : trendingThreads.length === 0 ? (
-        <p className="text-sm text-zinc-500 px-3">No threads yet.</p>
-      ) : (
-        <div className="flex flex-col gap-1">
-          {trendingThreads.map((thread) => (
-            <div
-              key={thread._id}
-              className="rounded-lg p-3 transition-colors hover:bg-zinc-100 space-y-1.5 cursor-pointer"
-              onClick={() => router.push(`/thread/${thread._id}`)}
-            >
-              {thread.spaceName && thread.spaceId && (
-                <Link
-                  href={`/space/${thread.spaceId}`}
-                  className="flex items-center gap-1 text-xs font-medium text-zinc-600 transition-colors hover:text-green-600"
-                  onClick={(e) => e.stopPropagation()}
+          ) : trendingThreads.length === 0 ? (
+            <p className="text-sm text-zinc-500">No threads yet.</p>
+          ) : (
+            <div className="flex flex-col gap-1">
+              {trendingThreads.map((thread) => (
+                <div
+                  key={thread._id}
+                  className="rounded-lg p-3 transition-colors hover:bg-white/70 space-y-1.5 cursor-pointer"
+                  onClick={() => router.push(`/thread/${thread._id}`)}
                 >
-                  <SpaceIcon
-                    icon={thread.spaceIcon ?? undefined}
-                    name={thread.spaceName}
-                    size="xs"
-                  />
-                  g/{thread.spaceName}
-                </Link>
-              )}
-              <h4 className="font-semibold text-zinc-900 text-sm leading-tight line-clamp-2">
-                {thread.title}
-              </h4>
-              <div className="flex items-center gap-2 text-xs text-zinc-500">
-                <span className="flex items-center gap-0.5">
-                  <ArrowBigUp className="h-3.5 w-3.5" fill="none" aria-hidden="true" /> {thread.upvoteCount}
-                </span>
-                <span>&bull;</span>
-                <span className="flex items-center gap-0.5">
-                  <MessageCircle className="h-3 w-3" /> {thread.commentCount}
-                </span>
-              </div>
+                  {thread.spaceName && thread.spaceId && (
+                    <Link
+                      href={`/space/${thread.spaceId}`}
+                      className="flex items-center gap-1 text-xs font-medium text-zinc-600 transition-colors hover:text-green-600"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <SpaceIcon
+                        icon={thread.spaceIcon ?? undefined}
+                        name={thread.spaceName}
+                        size="xs"
+                      />
+                      g/{thread.spaceName}
+                    </Link>
+                  )}
+                  <h4 className="font-semibold text-zinc-900 text-sm leading-tight line-clamp-2">
+                    {thread.title}
+                  </h4>
+                  <div className="flex items-center gap-2 text-xs text-zinc-500">
+                    <span className="flex items-center gap-0.5">
+                      <ArrowBigUp className="h-3.5 w-3.5" fill="none" aria-hidden="true" /> {thread.upvoteCount}
+                    </span>
+                    <span>&bull;</span>
+                    <span className="flex items-center gap-0.5">
+                      <MessageCircle className="h-3 w-3" /> {thread.commentCount}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

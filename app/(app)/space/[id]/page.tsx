@@ -11,6 +11,7 @@ import Link from "next/link";
 
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { useCurrentUser } from "@/app/useCurrentUser";
 import { ProjectFeedList } from "@/components/ProjectFeedList";
 import { ThreadRow } from "@/components/ThreadRow";
@@ -291,8 +292,13 @@ export default function SpacePage({
             )}
             </section>
 
-            <aside className="w-full lg:sticky lg:top-20 lg:w-72 xl:w-80">
-            <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm space-y-4">
+            <aside className="w-full lg:sticky lg:top-6 lg:w-72 xl:w-80">
+            <div className="space-y-3">
+              <h2 className="text-lg font-semibold text-zinc-900">
+                {activeTab === "projects" ? "Threads" : "Projects"}
+              </h2>
+              <Card className="border-zinc-200 bg-zinc-200/80 py-0 shadow-none">
+                <CardContent className="space-y-4 p-2">
               {/* Member count + join */}
               <div className="flex items-center justify-between lg:hidden">
                 <div className="flex items-center gap-1.5 text-sm text-zinc-500">
@@ -312,16 +318,12 @@ export default function SpacePage({
               {/* Context-aware cross-promotion */}
               {activeTab === "projects" ? (
                 <div>
-                  <p className="text-sm font-semibold text-zinc-700 mb-3">
-                    Threads
-                  </p>
-
                   {topThreads === undefined ? (
                     <div className="space-y-3">
                       {[...Array(3)].map((_, i) => (
                         <div key={i} className="animate-pulse space-y-1">
-                          <div className="h-3 bg-zinc-200 rounded w-3/4" />
-                          <div className="h-2 bg-zinc-200 rounded w-1/2" />
+                          <div className="h-3 bg-zinc-300 rounded w-3/4" />
+                          <div className="h-2 bg-zinc-300 rounded w-1/2" />
                         </div>
                       ))}
                     </div>
@@ -333,7 +335,7 @@ export default function SpacePage({
                         <Link
                           key={thread._id}
                           href={`/thread/${thread._id}`}
-                          className="block rounded-md px-2 py-2 -mx-2 hover:bg-zinc-50 transition-colors"
+                          className="block rounded-md p-2 hover:bg-white/70 transition-colors"
                         >
                           <h4 className="text-sm font-medium text-zinc-900 line-clamp-2 leading-tight">
                             {thread.title}
@@ -364,16 +366,12 @@ export default function SpacePage({
                 </div>
               ) : (
                 <div>
-                  <p className="text-sm font-semibold text-zinc-700 mb-3">
-                    Projects
-                  </p>
-
                   {topProjects === undefined ? (
                     <div className="space-y-3">
                       {[...Array(3)].map((_, i) => (
                         <div key={i} className="animate-pulse space-y-1">
-                          <div className="h-3 bg-zinc-200 rounded w-3/4" />
-                          <div className="h-2 bg-zinc-200 rounded w-1/2" />
+                          <div className="h-3 bg-zinc-300 rounded w-3/4" />
+                          <div className="h-2 bg-zinc-300 rounded w-1/2" />
                         </div>
                       ))}
                     </div>
@@ -385,7 +383,7 @@ export default function SpacePage({
                         <Link
                           key={project._id}
                           href={`/project/${project._id}`}
-                          className="block rounded-md px-2 py-2 -mx-2 hover:bg-zinc-50 transition-colors"
+                          className="block rounded-md p-2 hover:bg-white/70 transition-colors"
                         >
                           <h4 className="text-sm font-medium text-zinc-900 line-clamp-2 leading-tight">
                             {project.name}
@@ -415,6 +413,8 @@ export default function SpacePage({
                   </div>
                 </div>
               )}
+                </CardContent>
+              </Card>
             </div>
             </aside>
           </div>
