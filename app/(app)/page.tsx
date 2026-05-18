@@ -422,7 +422,7 @@ function TrendingThreads() {
               {trendingThreads.map((thread) => (
                 <div
                   key={thread._id}
-                  className="rounded-lg p-3 transition-colors hover:bg-white/70 space-y-1.5 cursor-pointer"
+                  className="rounded-lg py-2 px-3 transition-colors hover:bg-white/70 space-y-1 cursor-pointer"
                   onClick={() => router.push(`/thread/${thread._id}`)}
                 >
                   {thread.spaceName && thread.spaceId && (
