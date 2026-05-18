@@ -309,7 +309,7 @@ export default function ProfilePage({
           </div>
 
           {isOwner && (
-            <aside className="lg:sticky lg:top-6">
+            <aside>
               <EmailPreferencesSection />
             </aside>
           )}
@@ -357,19 +357,20 @@ function ProjectCard({
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-lg font-semibold text-zinc-900">
+                <div>
+                  <h3 className="inline text-lg font-semibold text-zinc-900">
                     {project.name}
                   </h3>
+                  {" "}
                   {project.status === "pending" && (
-                    <Badge variant="secondary" className="bg-amber-100 text-amber-800">
+                    <Badge variant="secondary" className="align-middle bg-amber-100 text-amber-800">
                       Pending
                     </Badge>
-                  )}
-                  <ReadinessBadge status={project.readinessStatus} />
+                  )}{" "}
+                  <ReadinessBadge status={project.readinessStatus} className="align-middle" />
                 </div>
                 {project.summary && (
-                  <p className="text-sm text-zinc-600">
+                  <p className="text-sm text-zinc-600 line-clamp-2">
                     {stripHtml(project.summary)}
                   </p>
                 )}
@@ -408,14 +409,15 @@ function FollowedCard({ project }: { project: FollowedProject }) {
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-lg font-semibold text-zinc-900">
+                <div>
+                  <h3 className="inline text-lg font-semibold text-zinc-900">
                     {project.name}
                   </h3>
-                  <ReadinessBadge status={project.readinessStatus} />
+                  {" "}
+                  <ReadinessBadge status={project.readinessStatus} className="align-middle" />
                 </div>
                 {project.summary && (
-                  <p className="text-sm text-zinc-600">
+                  <p className="text-sm text-zinc-600 line-clamp-2">
                     {stripHtml(project.summary)}
                   </p>
                 )}

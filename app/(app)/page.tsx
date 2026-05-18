@@ -157,7 +157,7 @@ export default function Home() {
             )}
           </div>
 
-          <aside className="self-start lg:sticky lg:top-6">
+          <aside className="self-start">
             <TrendingThreads />
           </aside>
         </section>
@@ -314,12 +314,12 @@ function CatalogDirectory() {
               {group.name}
             </h3>
           </div>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,200px))] gap-x-0 gap-y-2">
+          <div className="catalog-group-grid">
             {group.projects.map((project) => (
               <Link
                 key={project._id}
                 href={`/project/${project._id}`}
-                className="block max-w-[160px] truncate py-1 text-sm text-zinc-700 transition-colors hover:text-zinc-900 hover:underline"
+                className="truncate py-1 text-sm text-zinc-700 transition-colors hover:text-zinc-900 hover:underline"
                 title={project.name}
               >
                 {project.name}
@@ -422,7 +422,7 @@ function TrendingThreads() {
               {trendingThreads.map((thread) => (
                 <div
                   key={thread._id}
-                  className="rounded-lg p-3 transition-colors hover:bg-white/70 space-y-1.5 cursor-pointer"
+                  className="rounded-lg py-2 px-3 transition-colors hover:bg-white/70 space-y-1 cursor-pointer"
                   onClick={() => router.push(`/thread/${thread._id}`)}
                 >
                   {thread.spaceName && thread.spaceId && (

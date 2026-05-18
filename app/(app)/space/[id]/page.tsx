@@ -292,7 +292,7 @@ export default function SpacePage({
             )}
             </section>
 
-            <aside className="w-full lg:sticky lg:top-6 lg:w-72 xl:w-80">
+            <aside className="w-full lg:w-72 xl:w-80">
             <div className="space-y-3">
               <h2 className="text-lg font-semibold text-zinc-900">
                 {activeTab === "projects" ? "Threads" : "Projects"}
