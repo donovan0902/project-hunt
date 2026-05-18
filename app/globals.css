@@ -346,3 +346,9 @@ body {
   --amplify-components-tabs-item-active-border-color: var(--primary);
   --amplify-components-tabs-item-border-color: var(--border);
 }
+
+.catalog-group-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  row-gap: 0.5rem;
+}

@@ -314,12 +314,12 @@ function CatalogDirectory() {
               {group.name}
             </h3>
           </div>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,260px))] gap-x-0 gap-y-2">
+          <div className="catalog-group-grid">
             {group.projects.map((project) => (
               <Link
                 key={project._id}
                 href={`/project/${project._id}`}
-                className="block max-w-[220px] truncate py-1 text-sm text-zinc-700 transition-colors hover:text-zinc-900 hover:underline"
+                className="truncate py-1 text-sm text-zinc-700 transition-colors hover:text-zinc-900 hover:underline"
                 title={project.name}
               >
                 {project.name}
