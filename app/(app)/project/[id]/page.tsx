@@ -241,7 +241,7 @@ export default function ProjectPage({
               </>
             )}
             <BreadcrumbItem>
-              <BreadcrumbPage>{project.name}</BreadcrumbPage>
+              <BreadcrumbPage className="max-w-[240px] truncate" title={project.name}>{project.name}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>

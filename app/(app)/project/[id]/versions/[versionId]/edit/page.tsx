@@ -162,7 +162,7 @@ export default function EditVersionPage({
             )}
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link href={`/project/${id}`}>{project.name}</Link>
+                <Link href={`/project/${id}`} className="max-w-[180px] truncate" title={project.name}>{project.name}</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />

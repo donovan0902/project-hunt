@@ -370,7 +370,7 @@ function ProjectCard({
                   <ReadinessBadge status={project.readinessStatus} className="align-middle" />
                 </div>
                 {project.summary && (
-                  <p className="text-sm text-zinc-600">
+                  <p className="text-sm text-zinc-600 line-clamp-2">
                     {stripHtml(project.summary)}
                   </p>
                 )}
@@ -417,7 +417,7 @@ function FollowedCard({ project }: { project: FollowedProject }) {
                   <ReadinessBadge status={project.readinessStatus} className="align-middle" />
                 </div>
                 {project.summary && (
-                  <p className="text-sm text-zinc-600">
+                  <p className="text-sm text-zinc-600 line-clamp-2">
                     {stripHtml(project.summary)}
                   </p>
                 )}
