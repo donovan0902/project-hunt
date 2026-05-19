@@ -313,12 +313,11 @@ export default function ProjectPage({
                     <Pencil className="h-4 w-4" />
                   </Button>
                 )}
-                <div>
-                  <h1 className="inline text-2xl font-semibold text-zinc-900">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl font-semibold text-zinc-900">
                     {project.name}
                   </h1>
-                  {" "}
-                  <ReadinessBadge status={project.readinessStatus} className="align-middle" />
+                  <ReadinessBadge status={project.readinessStatus} />
                 </div>
               </div>
               {projectMedia && projectMedia.length > 0 && (
