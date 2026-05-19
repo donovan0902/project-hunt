@@ -97,10 +97,9 @@ export function ProjectRow({
       </div>
 
       {/* Title */}
-      <div className="-mt-1">
-        <h3 className="inline text-lg font-semibold text-zinc-900">{project.name}</h3>
-        {" "}
-        <ReadinessBadge status={project.readinessStatus} className="align-middle" />
+      <div className="-mt-1 flex flex-wrap items-center gap-2">
+        <h3 className="text-lg font-semibold text-zinc-900">{project.name}</h3>
+        <ReadinessBadge status={project.readinessStatus} />
       </div>
 
       {/* Media carousel OR summary - not both */}
