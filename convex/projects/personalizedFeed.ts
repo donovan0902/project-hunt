@@ -12,20 +12,7 @@ export const listPersonalizedFeed = query({
 
     if (!currentUser) {
       // Anonymous users: fall back to global hotScore feed
-      return fallbackToGlobalFeed(ctx, args);
-    }
-
-    // Check if user has feed entries
-    const hasEntries = await ctx.db
-      .query("userFeedEntries")
-      .withIndex("by_userId_personalizedScore", (q) =>
-        q.eq("userId", currentUser._id)
-      )
-      .first();
-
-    if (!hasEntries) {
-      // No precomputed feed yet — fall back to global feed
-      return fallbackToGlobalFeed(ctx, args);
+      return fallbackToGlobalFeed(ctx, args, undefined);
     }
 
     // Native Convex cursor-based pagination on precomputed scores
@@ -36,6 +23,14 @@ export const listPersonalizedFeed = query({
       )
       .order("desc")
       .paginate(args.paginationOpts);
+
+    // If first page is empty, no precomputed feed exists yet — fall back.
+    if (
+      paginatedResult.page.length === 0 &&
+      !args.paginationOpts.cursor
+    ) {
+      return fallbackToGlobalFeed(ctx, args, currentUser._id);
+    }
 
     // Resolve project docs, filter inactive
     const resolvedProjects = (
@@ -57,11 +52,9 @@ export const listPersonalizedFeed = query({
 
 async function fallbackToGlobalFeed(
   ctx: QueryCtx,
-  args: { paginationOpts: { numItems: number; cursor: string | null } }
+  args: { paginationOpts: { numItems: number; cursor: string | null } },
+  userId: Doc<"users">["_id"] | undefined
 ) {
-  const currentUser = await getCurrentUser(ctx);
-  const userId = currentUser?._id;
-
   const paginatedResult = await ctx.db
     .query("projects")
     .withIndex("by_status_hotScore", (q) => q.eq("status", "active"))
